@@ -12,6 +12,7 @@ namespace js {
     };
 
     struct task {
+        size_t id = -1;
         std::vector<sub_task> sequence;
     };
 
@@ -27,6 +28,7 @@ namespace js {
             file >> result.machine_count;
             for (size_t i = 0; i < task_count; i++) {
                 task t;
+                t.id = i;
                 for (size_t j = 0; j < result.machine_count; j++) {
                     sub_task st;
                     file >> st.machine_id;
