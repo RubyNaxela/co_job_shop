@@ -10,12 +10,13 @@ namespace js {
 
     struct sub_task {
         int16_t machine_id = -1, task_id = -1;
-        size_t duration = 0;
+        size_t duration = 0, scheduled_time = -1;
     };
 
     struct task {
         int16_t id = -1;
         std::vector<sub_task> sequence;
+        size_t last_scheduled_time = 0;
     };
 
     struct dataset {
@@ -42,6 +43,11 @@ namespace js {
                 result.tasks.push_back(t);
             }
             return result;
+        }
+
+        task& get_task(int16_t id) {
+            return *std::find_if(tasks.begin(), tasks.end(),
+                                 [&](const auto& item) { return item.id == id; });
         }
     };
 }

@@ -2,6 +2,7 @@
 #define JOB_SHOP_SCHEDULE
 
 #include <ostream>
+#include <sstream>
 #include <vector>
 #include "dataset.hpp"
 
@@ -10,6 +11,7 @@ namespace js {
     class schedule {
 
         std::vector<std::vector<int16_t>> table;
+        dataset& data;
 
         [[nodiscard]] int16_t get_cell(int16_t machine_id, size_t time_unit) const {
             if (time_unit >= table[machine_id].size()) return -1;
@@ -24,12 +26,18 @@ namespace js {
             return true;
         }
 
-        static void schedule_sub_task(std::vector<int16_t>& timeline, sub_task& task, size_t start) {
+        void schedule_sub_task(std::vector<int16_t>& timeline, sub_task& task, size_t start) {
             const size_t end = start + task.duration;
             if (end >= timeline.size()) timeline.resize(end, -1);
             for (size_t t = start; t < end; t++) timeline[t] = task.task_id;
-//            std::cout << "scheduled subtask " << task.task_id << "(" << task.machine_id << ")<" << task.duration << ">"
-//                      << " @ " << start << " ~ " << end << std::endl;
+            task.scheduled_time = start;
+            data.get_task(task.task_id).last_scheduled_time = start + task.duration;
+        }
+
+        [[nodiscard]] size_t longest_timeline() const {
+            size_t result = 0;
+            for (const auto& timeline : table) result = std::max(result, timeline.size());
+            return result;
         }
 
         static std::string colored(const char* text, int16_t color) {
@@ -38,11 +46,12 @@ namespace js {
 
     public:
 
-        explicit schedule(size_t machine_count) : table(std::vector<std::vector<int16_t>>(machine_count)) {}
+        explicit schedule(dataset& data)
+                : table(std::vector<std::vector<int16_t>>(data.machine_count)), data(data) {}
 
         void add_sub_task(sub_task& task) {
             std::vector<int16_t>& timeline = table[task.machine_id];
-            size_t t = 0;
+            size_t t = data.get_task(task.task_id).last_scheduled_time;
             while (not is_available(task, t)) t++;
             schedule_sub_task(timeline, task, t);
         }
@@ -68,6 +77,18 @@ namespace js {
             }
             delete[] id_string;
             return os;
+        };
+
+        [[nodiscard]] std::string summary() const {
+            std::stringstream summary;
+            summary << longest_timeline() << '\n';
+            std::vector<task>& tasks = data.tasks;
+            std::sort(tasks.begin(), tasks.end(), [](const task& a, const task& b) { return a.id < b.id; });
+            for (const auto& task : tasks) {
+                for (const auto& sub_task : task.sequence) summary << sub_task.scheduled_time << ' ';
+                summary << '\n';
+            }
+            return summary.str();
         };
     };
 }
