@@ -1,5 +1,6 @@
 # Project exclude paths
 /.idea
+/.vscode
 /cmake-build-debug/.cmake
 /cmake-build-debug/CMakeFiles
 /cmake-build-debug/Testing
