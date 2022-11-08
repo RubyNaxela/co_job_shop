@@ -1,19 +1,23 @@
 #include <iostream>
+#include <algorithm>
 #include "dataset.hpp"
 #include "schedule.hpp"
 
 // http://www.cs.put.poznan.pl/mdrozdowski/dyd/ok/index.html
 
 int main() {
-    js::dataset data = js::dataset::from_file("zero_time_task.txt");
-    js::schedule schedule(data.machine_count);
+    js::dataset data = js::dataset::from_file("data.txt");
+    js::schedule schedule;
+    //i<data.tasks.subtasks.size
+    for (int i=0; i<data.tasks[0].sequence.size();i++)
+    {
+        std::sort(data.tasks.begin(),data.tasks.end(),[=](const js::task& a, const js::task& b)
+        { return a.sequence[i].duration < b.sequence[i].duration; });
 
-    for (js::task& t : data.tasks) {
-//        std::cout << "scheduling task #" << t.id << std::endl;
-        for (js::sub_task& st : t.sequence) schedule.add_sub_task(st);
-//        std::cout << schedule << std::endl;
+        for(int j=0; j<data.tasks.size();j++)
+        {
+            schedule.add_sub_task(data.tasks[j].sequence[i]);
+        }
     }
-    std::cout << schedule << std::endl;
-
     return 0;
 }
