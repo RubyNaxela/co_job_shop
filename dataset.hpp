@@ -6,48 +6,46 @@
 
 namespace js {
 
-    struct task;
-
     struct sub_task {
-        int16_t machine_id = -1, task_id = -1;
-        size_t duration = 0, scheduled_time = -1;
+
+        struct task& parent;
+        int16_t machine_id = 0;
+        size_t duration = 0, scheduled_time = 0;
+
+        explicit sub_task(task& parent) : parent(parent) {}
     };
 
     struct task {
-        int16_t id = -1;
+
+        int16_t id;
         std::vector<sub_task> sequence;
         size_t last_scheduled_time = 0;
+
+        explicit task(int16_t id) : id(id) {}
     };
 
     struct dataset {
-        size_t machine_count = 0;
+
+        int16_t machine_count = 0;
         std::vector<task> tasks;
 
-        static dataset from_file(const char* path) {
+        void load_from_file(const char* path) {
             std::ifstream file(path);
             if (not file.is_open()) throw std::runtime_error("Could not open file " + std::string(path));
-            dataset result;
-            size_t task_count;
+            int16_t task_count;
             file >> task_count;
-            file >> result.machine_count;
-            for (size_t i = 0; i < task_count; i++) {
-                task t;
-                t.id = (int16_t) i;
-                for (size_t j = 0; j < result.machine_count; j++) {
-                    sub_task st;
+            file >> machine_count;
+            tasks.reserve(task_count);
+            for (int16_t i = 0; i < task_count; i++) {
+                task& t = tasks.emplace_back(i);
+                t.sequence.reserve(machine_count);
+                for (int16_t j = 0; j < machine_count; j++) {
+                    sub_task& st = t.sequence.emplace_back(t);
                     file >> st.machine_id;
                     file >> st.duration;
-                    st.task_id = (int16_t) i;
-                    t.sequence.push_back(st);
                 }
-                result.tasks.push_back(t);
             }
-            return result;
-        }
-
-        task& get_task(int16_t id) {
-            return *std::find_if(tasks.begin(), tasks.end(),
-                                 [&](const auto& item) { return item.id == id; });
+            file.close();
         }
     };
 }

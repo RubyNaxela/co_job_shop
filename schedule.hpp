@@ -22,17 +22,17 @@ namespace js {
         bool is_available(const sub_task& task, size_t start) {
             for (int16_t m = 0; m < (int16_t) table.size(); m++)
                 for (size_t t = start; t < start + task.duration; t++) {
-                    if (get_cell(task.machine_id, t) != -1 or get_cell(m, t) == task.task_id) return false;
+                    if (get_cell(task.machine_id, t) != -1 or get_cell(m, t) == task.parent.id) return false;
                 }
             return true;
         }
 
-        void schedule_sub_task(std::vector<int16_t>& timeline, sub_task& task, size_t start) {
+        static void schedule_sub_task(std::vector<int16_t>& timeline, sub_task& task, size_t start) {
             const size_t end = start + task.duration;
             if (end >= timeline.size()) timeline.resize(end, -1);
-            for (size_t t = start; t < end; t++) timeline[t] = task.task_id;
+            for (size_t t = start; t < end; t++) timeline[t] = task.parent.id;
             task.scheduled_time = start;
-            data.get_task(task.task_id).last_scheduled_time = start + task.duration;
+            task.parent.last_scheduled_time = start + task.duration;
         }
 
         [[nodiscard]] size_t longest_timeline() const {
@@ -60,7 +60,7 @@ namespace js {
 
         void add_sub_task(sub_task& task) {
             std::vector<int16_t>& timeline = table[task.machine_id];
-            size_t t = data.get_task(task.task_id).last_scheduled_time;
+            size_t t = task.parent.last_scheduled_time;
             while (not is_available(task, t)) t++;
             schedule_sub_task(timeline, task, t);
         }

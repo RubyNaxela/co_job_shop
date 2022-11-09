@@ -20,7 +20,8 @@ void stachu_algorithm(js::dataset& data, js::schedule& schedule) {
 int main(int argc, char** argv) {
     std::string data_file = "data_from_mary.txt";
     if (argc > 1) data_file = std::string(argv[1]);
-    js::dataset data = js::dataset::from_file(data_file.c_str());
+    js::dataset data;
+    data.load_from_file(data_file.c_str());
     js::schedule schedule(data);
     stachu_algorithm(data, schedule);
     std::cout << schedule.gantt_chart() << std::endl;
