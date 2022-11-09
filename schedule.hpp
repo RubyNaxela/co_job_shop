@@ -5,6 +5,7 @@
 #include <sstream>
 #include <vector>
 #include "dataset.hpp"
+#include "platform.hpp"
 
 namespace js {
 
@@ -40,9 +41,17 @@ namespace js {
             return result;
         }
 
+#ifndef WINDOZE
+
         static std::string colored(const char* text, int16_t color) {
             return "\033[1;" + std::to_string(31 + color % 6) + "m" + text + "\033[0m";
         }
+
+#else
+        static std::string colored(const char* text, int16_t color) {
+            return text;
+        }
+#endif
 
     public:
 
