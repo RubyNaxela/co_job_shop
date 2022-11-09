@@ -65,27 +65,41 @@ namespace js {
             schedule_sub_task(timeline, task, t);
         }
 
-        friend std::ostream& operator<<(std::ostream& os, const schedule& s) {
+        [[nodiscard]] std::string gantt_chart() {
+
+            std::stringstream chart;
+
+            const size_t longest = longest_timeline();
+            const auto cell_width = uint8_t(std::max(log10(longest), log10(data.tasks.size())) + 1);
+            const auto left_col_width = uint8_t(log10(data.machine_count) + 1);
+            const std::string l_hd_format = "%0" + std::to_string(left_col_width) + "hd";
+            const std::string zu_format = "%0" + std::to_string(cell_width) + "zu";
+            const std::string hd_format = "%0" + std::to_string(cell_width) + "hd";
+            const char* fmt1 = l_hd_format.c_str(), * fmt2 = zu_format.c_str(), * fmt3 = hd_format.c_str();
+            const std::string empty = std::string(cell_width, '_') + '|';
+
+            chart << "   " + std::string(left_col_width, ' ');
             char* id_string = new char[3];
-            os << "     ";
-            for (uint8_t i = 0; i < 64; i++) {
-                sprintf(id_string, "%02hd", i);
-                os << id_string << " ";
+            for (size_t i = 0; i < longest; i++) {
+                sprintf(id_string, fmt2, i);
+                chart << id_string << " ";
             }
-            os << std::endl;
-            for (int16_t machine_id = 0; machine_id < (int16_t) s.table.size(); machine_id++) {
-                sprintf(id_string, "%02hd", machine_id);
-                os << id_string << ": ";
-                os << '|';
-                for (int16_t task_id : s.table[machine_id]) {
-                    sprintf(id_string, "%02hd", task_id);
-                    if (task_id == -1) os << "__|";
-                    else os << colored(id_string, task_id) << '|';
+            chart << std::endl;
+
+            for (int16_t machine_id = 0; machine_id < (int16_t) table.size(); machine_id++) {
+                sprintf(id_string, fmt1, machine_id);
+                chart << id_string << ": ";
+                chart << '|';
+                for (int16_t task_id : table[machine_id]) {
+                    sprintf(id_string, fmt3, task_id);
+                    if (task_id == -1) chart << empty;
+                    else chart << colored(id_string, task_id) << '|';
                 }
-                os << std::endl;
+                chart << std::endl;
             }
+
             delete[] id_string;
-            return os;
+            return chart.str();
         };
 
         [[nodiscard]] std::string summary() const {

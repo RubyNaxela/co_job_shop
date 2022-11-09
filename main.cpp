@@ -19,7 +19,7 @@ int main(int argc, char** argv) {
     js::dataset data = js::dataset::from_file(data_file.c_str());
     js::schedule schedule(data);
     stachu_algorithm(data, schedule);
-    std::cout << schedule << std::endl;
+    std::cout << schedule.gantt_chart() << std::endl;
     std::cout << schedule.summary() << std::endl;
     return 0;
 }
