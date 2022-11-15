@@ -20,7 +20,7 @@ int main(int argc, char** argv) {
     js::dataset data;
     data.load_from_file(data_file.c_str());
     js::schedule schedule(data);
-    js::schedule_tasks(data, schedule, js::heuristics::get_by_name(heuristic));
+    js::schedule_jobs(data, schedule, js::heuristics::get_by_name(heuristic));
 
     if (display_gantt_chart) std::cout << schedule.gantt_chart() << std::endl;
     std::cout << schedule.summary() << std::endl;
