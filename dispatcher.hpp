@@ -10,8 +10,8 @@
 namespace js {
 
     void schedule_jobs(js::dataset& data, js::schedule& schedule, const js::heuristic& heuristic) {
-        const time16_t sequence_length = data.jobs[0].sequence.size();
-        for (time16_t i = 0; i < sequence_length; i++) {
+        const time32_t sequence_length = data.jobs[0].sequence.size();
+        for (time32_t i = 0; i < sequence_length; i++) {
             std::vector<js::job*> tasks_order(data.jobs.size());
             std::iota(tasks_order.begin(), tasks_order.end(), &data.jobs[0]);
             std::sort(tasks_order.begin(), tasks_order.end(),

@@ -11,44 +11,44 @@ namespace js {
 
     class schedule {
 
-        std::vector<std::vector<id16_t>> table;
+        std::vector<std::vector<id32_t>> table;
         dataset& data;
 
-        [[nodiscard]] id16_t get_cell(id16_t machine_id, time16_t time_unit) const {
+        [[nodiscard]] id32_t get_cell(id32_t machine_id, time32_t time_unit) const {
             if (time_unit >= table[machine_id].size()) return -1;
             return table[machine_id][time_unit];
         }
 
-        bool is_available(const task& task, time16_t start) {
-            for (id16_t m = 0; m < (id16_t) table.size(); m++)
-                for (time16_t t = start; t < start + task.duration; t++) {
+        bool is_available(const task& task, time32_t start) {
+            for (id32_t m = 0; m < (id32_t) table.size(); m++)
+                for (time32_t t = start; t < start + task.duration; t++) {
                     if (get_cell(task.machine_id, t) != -1) return false;
                 }
             return true;
         }
 
-        static void schedule_task(std::vector<id16_t>& timeline, task& task, time16_t start) {
-            const time16_t end = start + task.duration;
+        static void schedule_task(std::vector<id32_t>& timeline, task& task, time32_t start) {
+            const time32_t end = start + task.duration;
             if (end >= timeline.size()) timeline.resize(end, -1);
-            for (time16_t t = start; t < end; t++) timeline[t] = task.parent.id;
+            for (time32_t t = start; t < end; t++) timeline[t] = task.parent.id;
             task.scheduled_time = start;
             task.parent.last_scheduled_time = start + task.duration;
         }
 
-        [[nodiscard]] time16_t longest_timeline() const {
-            time16_t result = 0;
-            for (const auto& timeline : table) result = std::max(result, time16_t(timeline.size()));
+        [[nodiscard]] time32_t longest_timeline() const {
+            time32_t result = 0;
+            for (const auto& timeline : table) result = std::max(result, time32_t(timeline.size()));
             return result;
         }
 
 #ifndef WINDOZE
 
-        static std::string colored(const char* text, id16_t color) {
+        static std::string colored(const char* text, id32_t color) {
             return "\033[1;" + std::to_string(31 + color % 6) + "m" + text + "\033[0m";
         }
 
 #else
-        static std::string colored(const char* text, id16_t color) {
+        static std::string colored(const char* text, id32_t color) {
             return text;
         }
 #endif
@@ -56,11 +56,11 @@ namespace js {
     public:
 
         explicit schedule(dataset& data)
-                : table(std::vector<std::vector<id16_t>>(data.machine_count)), data(data) {}
+                : table(std::vector<std::vector<id32_t>>(data.machine_count)), data(data) {}
 
         void add_task(task& task) {
-            std::vector<id16_t>& timeline = table[task.machine_id];
-            time16_t t = task.parent.last_scheduled_time;
+            std::vector<id32_t>& timeline = table[task.machine_id];
+            time32_t t = task.parent.last_scheduled_time;
             while (not is_available(task, t)) t++;
             schedule_task(timeline, task, t);
         }
@@ -69,7 +69,7 @@ namespace js {
 
             std::stringstream chart;
 
-            const time16_t longest = longest_timeline();
+            const time32_t longest = longest_timeline();
             const auto cell_width = uint8_t(std::max(log10(longest), log10(data.jobs.size())) + 1);
             const auto left_col_width = uint8_t(log10(data.machine_count) + 1);
             const std::string l_hd_format = "%0" + std::to_string(left_col_width) + "hd";
@@ -80,17 +80,17 @@ namespace js {
 
             chart << "   " + std::string(left_col_width, ' ');
             char* id_string = new char[3];
-            for (time16_t i = 0; i < longest; i++) {
+            for (time32_t i = 0; i < longest; i++) {
                 sprintf(id_string, fmt2, i);
                 chart << id_string << " ";
             }
             chart << std::endl;
 
-            for (id16_t machine_id = 0; machine_id < (id16_t) table.size(); machine_id++) {
+            for (id32_t machine_id = 0; machine_id < (id32_t) table.size(); machine_id++) {
                 sprintf(id_string, fmt1, machine_id);
                 chart << id_string << ": ";
                 chart << '|';
-                for (id16_t task_id : table[machine_id]) {
+                for (id32_t task_id : table[machine_id]) {
                     sprintf(id_string, fmt3, task_id);
                     if (task_id == -1) chart << empty;
                     else chart << colored(id_string, task_id) << '|';

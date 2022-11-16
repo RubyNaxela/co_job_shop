@@ -5,23 +5,23 @@
 
 namespace js {
 
-    typedef std::function<bool(const js::job*, const js::job*, time16_t)> heuristic;
+    typedef std::function<bool(const js::job*, const js::job*, time32_t)> heuristic;
 
     namespace heuristics {
 
-        bool alex_forward(const js::job* a, const js::job* b, time16_t i) {
+        bool alex_forward(const js::job* a, const js::job* b, time32_t i) {
             return false;
         }
 
-        bool alex_backward(const js::job* a, const js::job* b, time16_t i) {
+        bool alex_backward(const js::job* a, const js::job* b, time32_t i) {
             return true;
         }
 
-        bool stachu_ascending(const js::job* a, const js::job* b, time16_t i) {
+        bool stachu_ascending(const js::job* a, const js::job* b, time32_t i) {
             return a->sequence[i].duration < b->sequence[i].duration;
         }
 
-        bool stachu_descending(const js::job* a, const js::job* b, time16_t i) {
+        bool stachu_descending(const js::job* a, const js::job* b, time32_t i) {
             return a->sequence[i].duration > b->sequence[i].duration;
         }
 
