@@ -39,15 +39,9 @@ namespace js {
 
         struct job& parent;
         id32_t machine_id = 0;
-        time32_t duration = 0;
-        interval* scheduled_time = nullptr;
+        time32_t duration = 0, scheduled_time = 0;
 
         explicit task(job& parent) : parent(parent) {}
-
-        void set_scheduled_time(interval* time) {
-            scheduled_time = time;
-            scheduled_time->task = this;
-        }
     };
 
     struct job {

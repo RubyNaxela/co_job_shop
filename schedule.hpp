@@ -74,8 +74,8 @@ namespace js {
             if (empty_before) timeline.insert_before(interval, interval::empty(interval_start, start - 1));
             if (empty_after) timeline.insert_after(interval, interval::empty(start + task.duration, interval_end));
 
+            task.scheduled_time = start;
             task.parent.last_scheduled_time = start + task.duration;
-            task.set_scheduled_time(&*interval);
         }
 
         [[nodiscard]] time32_t longest_timeline() const {
@@ -153,7 +153,7 @@ namespace js {
             std::vector<job>& tasks = data.jobs;
             std::sort(tasks.begin(), tasks.end(), [](const job& a, const job& b) { return a.id < b.id; });
             for (const auto& task : tasks) {
-                for (const auto& sub_task : task.sequence) summary << sub_task.scheduled_time->start << ' ';
+                for (const auto& sub_task : task.sequence) summary << sub_task.scheduled_time << ' ';
                 summary << '\n';
             }
             return summary.str();
