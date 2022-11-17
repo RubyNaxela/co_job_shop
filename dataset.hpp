@@ -18,8 +18,8 @@ namespace js {
 
         interval(time32_t start, time32_t end, struct task* task) : start(start), end(end), task(task) {}
 
-        static interval* empty(time32_t start = 0, time32_t end = infinity) {
-            return new interval(start, end, nullptr);
+        static interval empty(time32_t start = 0, time32_t end = infinity) {
+            return {start, end, nullptr};
         }
 
         [[nodiscard]] bool occupied() const {
@@ -40,13 +40,13 @@ namespace js {
         struct job& parent;
         id32_t machine_id = 0;
         time32_t duration = 0;
-        interval scheduled_time = {0, 0, this};
+        interval* scheduled_time = nullptr;
 
         explicit task(job& parent) : parent(parent) {}
 
-        void set_scheduled_time(time32_t start, time32_t end) {
-            scheduled_time.start = start;
-            scheduled_time.end = end;
+        void set_scheduled_time(interval* time) {
+            scheduled_time = time;
+            scheduled_time->task = this;
         }
     };
 

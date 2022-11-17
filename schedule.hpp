@@ -12,39 +12,39 @@ namespace js {
 
     class schedule {
 
-        std::vector<std::list<interval*>> table;
+        std::vector<std::list<interval>> table;
         dataset& data;
 
-        static void
-        schedule_task(std::list<interval*>& timeline, std::list<interval*>::iterator interval, task& task, time32_t start) {
+        static void schedule_task(task& task, std::list<interval>& timeline,
+                                  std::list<interval>::iterator interval, time32_t start) {
 
-            task.set_scheduled_time(start, task.parent.last_scheduled_time = start + task.duration);
+            const time32_t interval_start = interval->start, interval_end = interval->end;
+            const bool empty_before = start > interval_start, empty_after = start + task.duration - 1 < interval_end;
 
-            const bool empty_before = start > (*interval)->start, empty_after = start + task.duration - 1 < (*interval)->end;
-            const time32_t interval_start = (*interval)->start, interval_end = (*interval)->end;
-
-            (*interval)->task = &task;
-            (*interval)->start = start;
-            (*interval)->end = start + task.duration - 1;
+            interval->task = &task;
+            interval->start = start;
+            interval->end = start + task.duration - 1;
 
             if (empty_before) timeline.insert(interval, interval::empty(interval_start, start - 1));
             if (empty_after) timeline.insert(std::next(interval), interval::empty(start + task.duration, interval_end));
 
+            task.parent.last_scheduled_time = start + task.duration;
+            task.set_scheduled_time(&*interval);
         }
 
         [[nodiscard]] time32_t longest_timeline() const {
             time32_t result = 0;
             for (const auto& timeline : table)
-                if (timeline.back()->occupied()) result = std::max(result, timeline.back()->end);
-                else result = std::max(result, timeline.back()->start);
+                if (timeline.back().occupied()) result = std::max(result, timeline.back().end);
+                else result = std::max(result, timeline.back().start);
             return result;
         }
 
-        static std::vector<id32_t> get_timeline(const std::list<interval*>& timeline, time32_t length) {
+        static std::vector<id32_t> get_timeline(const std::list<interval>& timeline, time32_t length) {
             std::vector<id32_t> result;
             for (const auto& interval : timeline) {
-                for (time32_t i = interval->start; i <= interval->end and i < length; i++) {
-                    if (interval->occupied()) result.push_back(interval->task->parent.id);
+                for (time32_t i = interval.start; i <= interval.end and i < length; i++) {
+                    if (interval.occupied()) result.push_back(interval.task->parent.id);
                     else result.push_back(-1);
                 }
             }
@@ -65,17 +65,17 @@ namespace js {
 
     public:
 
-        explicit schedule(dataset& data) : table(std::vector<std::list<interval*>>(data.machine_count)), data(data) {
+        explicit schedule(dataset& data) : table(std::vector<std::list<interval>>(data.machine_count)), data(data) {
             for (auto& timeline : table) timeline.push_back(interval::empty());
         }
 
         void add_task(task& task) {
-            std::list<interval*>& timeline = table[task.machine_id];
+            std::list<interval>& timeline = table[task.machine_id];
             const time32_t job_end = task.parent.last_scheduled_time;
             auto time = std::find_if(timeline.begin(), timeline.end(),
-                                     [=](const interval* i) { return i->includes(job_end); });
-            while ((*time)->occupied() or not(*time)->includes(job_end, task.duration)) ++time;
-            schedule_task(timeline, time, task, std::max((*time)->start, job_end));
+                                     [=](const interval i) { return i.includes(job_end); });
+            while (time->occupied() or not time->includes(job_end, task.duration)) ++time;
+            schedule_task(task, timeline, time, std::max(time->start, job_end));
         }
 
         [[nodiscard]] std::string gantt_chart() {
@@ -121,7 +121,7 @@ namespace js {
             std::vector<job>& tasks = data.jobs;
             std::sort(tasks.begin(), tasks.end(), [](const job& a, const job& b) { return a.id < b.id; });
             for (const auto& task : tasks) {
-                for (const auto& sub_task : task.sequence) summary << sub_task.scheduled_time.start << ' ';
+                for (const auto& sub_task : task.sequence) summary << sub_task.scheduled_time->start << ' ';
                 summary << '\n';
             }
             return summary.str();
