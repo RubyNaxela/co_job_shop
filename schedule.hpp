@@ -42,6 +42,17 @@ namespace js {
             return result;
         }
 
+        static std::vector<id32_t> get_timeline(const std::vector<interval*>& timeline, time32_t length) {
+            std::vector<id32_t> result;
+            for (const auto& interval : timeline) {
+                for (time32_t i = interval->start; i <= interval->end and i < length; i++) {
+                    if (interval->occupied()) result.push_back(interval->task->parent.id);
+                    else result.push_back(-1);
+                }
+            }
+            return result;
+        }
+
 #ifndef WINDOZE
 
         static std::string colored(const char* text, id32_t color) {
@@ -72,40 +83,39 @@ namespace js {
 
         [[nodiscard]] std::string gantt_chart() {
 
-//            std::stringstream chart;
-//
-//            const time32_t longest = longest_timeline();
-//            const auto cell_width = uint8_t(std::max(log10(longest), log10(data.jobs.size())) + 1);
-//            const auto left_col_width = uint8_t(log10(data.machine_count) + 1);
-//            const std::string l_hd_format = "%0" + std::to_string(left_col_width) + "hd";
-//            const std::string zu_format = "%0" + std::to_string(cell_width) + "zu";
-//            const std::string hd_format = "%0" + std::to_string(cell_width) + "hd";
-//            const char* fmt1 = l_hd_format.c_str(), * fmt2 = zu_format.c_str(), * fmt3 = hd_format.c_str();
-//            const std::string empty = std::string(cell_width, '_') + '|';
-//
-//            chart << "   " + std::string(left_col_width, ' ');
-//            char* id_string = new char[3];
-//            for (time32_t i = 0; i < longest; i++) {
-//                sprintf(id_string, fmt2, i);
-//                chart << id_string << " ";
-//            }
-//            chart << std::endl;
-//
-//            for (id32_t machine_id = 0; machine_id < (id32_t) table.size(); machine_id++) {
-//                sprintf(id_string, fmt1, machine_id);
-//                chart << id_string << ": ";
-//                chart << '|';
-//                for (id32_t task_id : table[machine_id]) {
-//                    sprintf(id_string, fmt3, task_id);
-//                    if (task_id == -1) chart << empty;
-//                    else chart << colored(id_string, task_id) << '|';
-//                }
-//                chart << std::endl;
-//            }
-//
-//            delete[] id_string;
-//            return chart.str();
-            return "temporarily unavailable";
+            std::stringstream chart;
+
+            const time32_t longest = longest_timeline();
+            const auto cell_width = uint8_t(std::max(log10(longest), log10(data.jobs.size())) + 1);
+            const auto left_col_width = uint8_t(log10(data.machine_count) + 1);
+            const std::string l_hd_format = "%0" + std::to_string(left_col_width) + "hd";
+            const std::string zu_format = "%0" + std::to_string(cell_width) + "zu";
+            const std::string hd_format = "%0" + std::to_string(cell_width) + "hd";
+            const char* fmt1 = l_hd_format.c_str(), * fmt2 = zu_format.c_str(), * fmt3 = hd_format.c_str();
+            const std::string empty = std::string(cell_width, '_') + '|';
+
+            chart << "   " + std::string(left_col_width, ' ');
+            char* id_string = new char[3];
+            for (time32_t i = 0; i < longest; i++) {
+                sprintf(id_string, fmt2, i);
+                chart << id_string << " ";
+            }
+            chart << std::endl;
+
+            for (id32_t machine_id = 0; machine_id < (id32_t) table.size(); machine_id++) {
+                sprintf(id_string, fmt1, machine_id);
+                chart << id_string << ": ";
+                chart << '|';
+                for (id32_t task_id : get_timeline(table[machine_id], longest)) {
+                    sprintf(id_string, fmt3, task_id);
+                    if (task_id == -1) chart << empty;
+                    else chart << colored(id_string, task_id) << '|';
+                }
+                chart << std::endl;
+            }
+
+            delete[] id_string;
+            return chart.str();
         };
 
         [[nodiscard]] std::string summary() const {
