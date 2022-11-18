@@ -1,8 +1,9 @@
 #ifndef JOB_SHOP_SCHEDULE
 #define JOB_SHOP_SCHEDULE
 
+#include <cmath>
+#include <numeric>
 #include <list>
-#include <ostream>
 #include <sstream>
 #include <vector>
 #include "dataset.hpp"
@@ -42,7 +43,7 @@ namespace js {
         }
 
         [[nodiscard]] std::vector<id32_t> quantized(time32_t limit) const {
-            std::vector<id32_t> result;
+            std::vector<id32_t> result(limit);
             for (const auto& interval : intervals) {
                 for (time32_t i = interval.start; i <= interval.end and i < limit; i++) {
                     if (interval.occupied()) result.push_back(interval.task->parent.id);
@@ -80,9 +81,7 @@ namespace js {
 
 #ifndef WINDOZE
 
-        static std::string
-
-        colored(const char* text, id32_t color) {
+        static std::string colored(const char* text, id32_t color) {
             return "\033[1;" + std::to_string(31 + color % 6) + "m" + text + "\033[0m";
         }
 
@@ -93,10 +92,6 @@ namespace js {
 #endif
 
     public:
-
-        [[nodiscard]] time32_t longest_timeline() const {
-            return std::max_element(table.begin(), table.end())->length();
-        }
 
         explicit schedule(dataset& data) : table(std::vector<timeline>(data.machine_count)), data(data) {
             for (auto& timeline : table) timeline.add(interval::empty());
@@ -110,13 +105,21 @@ namespace js {
             schedule_task(task, timeline, time, std::max(time->start, job_end));
         }
 
+        [[nodiscard]] dataset& get_dataset() const {
+            return data;
+        }
+
+        [[nodiscard]] time32_t longest_timeline() const {
+            return std::max_element(table.begin(), table.end())->length();
+        }
+
         [[nodiscard]] std::string gantt_chart() {
 
-            std::stringstream chart;
+            std::ostringstream chart;
 
             const time32_t longest = longest_timeline();
-            const auto cell_width = uint8_t(std::max(log10(longest), log10(data.jobs.size())) + 1);
-            const auto left_col_width = uint8_t(log10(data.machine_count) + 1);
+            const auto cell_width = uint8_t(std::max(std::log10(longest), std::log10(data.jobs.size())) + 1);
+            const auto left_col_width = uint8_t(std::log10(data.machine_count) + 1);
             const std::string l_hd_format = "%0" + std::to_string(left_col_width) + "hd";
             const std::string zu_format = "%0" + std::to_string(cell_width) + "zu";
             const std::string hd_format = "%0" + std::to_string(cell_width) + "hd";
@@ -148,7 +151,7 @@ namespace js {
         };
 
         [[nodiscard]] std::string summary() const {
-            std::stringstream summary;
+            std::ostringstream summary;
             summary << longest_timeline() << '\n';
             std::vector<job>& tasks = data.jobs;
             std::sort(tasks.begin(), tasks.end(), [](const job& a, const job& b) { return a.id < b.id; });

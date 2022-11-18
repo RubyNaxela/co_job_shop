@@ -14,6 +14,7 @@ namespace js {
         }
 
         bool alex_backward(const js::job* a, const js::job* b, time32_t i) {
+            if (a->sequence[i].duration == b->sequence[i].duration) return false;
             return true;
         }
 

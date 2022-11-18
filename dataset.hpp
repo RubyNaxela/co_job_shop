@@ -1,7 +1,7 @@
 #ifndef JOB_SHOP_DATASET
 #define JOB_SHOP_DATASET
 
-#include <fstream>
+#include <sstream>
 #include <vector>
 
 namespace js {
@@ -35,15 +35,6 @@ namespace js {
         }
     };
 
-    struct task {
-
-        struct job& parent;
-        id32_t machine_id = 0;
-        time32_t duration = 0, scheduled_time = 0;
-
-        explicit task(job& parent) : parent(parent) {}
-    };
-
     struct job {
 
         id32_t id;
@@ -53,28 +44,35 @@ namespace js {
         explicit job(id32_t id) : id(id) {}
     };
 
+    struct task {
+
+        job& parent;
+        id32_t machine_id = 0;
+        time32_t duration = 0, scheduled_time = 0;
+
+        explicit task(job& parent) : parent(parent) {}
+    };
+
     struct dataset {
 
         id32_t machine_count = 0;
         std::vector<job> jobs;
 
-        void load_from_file(const char* path) {
-            std::ifstream file(path);
-            if (not file.is_open()) throw std::runtime_error("Could not open file " + std::string(path));
+        void load_from_memory(const std::string& data_string) {
+            std::istringstream data_stream(data_string);
             id32_t job_count;
-            file >> job_count;
-            file >> machine_count;
+            data_stream >> job_count;
+            data_stream >> machine_count;
             jobs.reserve(job_count);
             for (id32_t i = 0; i < job_count; i++) {
                 job& t = jobs.emplace_back(i);
                 t.sequence.reserve(machine_count);
                 for (id32_t j = 0; j < machine_count; j++) {
                     task& st = t.sequence.emplace_back(t);
-                    file >> st.machine_id;
-                    file >> st.duration;
+                    data_stream >> st.machine_id;
+                    data_stream >> st.duration;
                 }
             }
-            file.close();
         }
     };
 }

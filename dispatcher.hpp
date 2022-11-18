@@ -9,7 +9,8 @@
 
 namespace js {
 
-    void schedule_jobs(js::dataset& data, js::schedule& schedule, const js::heuristic& heuristic) {
+    void schedule_jobs(js::schedule& schedule, const js::heuristic& heuristic) {
+        js::dataset& data = schedule.get_dataset();
         const time32_t sequence_length = data.jobs[0].sequence.size();
         for (time32_t i = 0; i < sequence_length; i++) {
             std::vector<js::job*> tasks_order(data.jobs.size());
