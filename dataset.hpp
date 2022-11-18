@@ -6,48 +6,75 @@
 
 namespace js {
 
-    struct task;
+    typedef uint32_t time32_t;
+    typedef int32_t id32_t;
 
-    struct sub_task {
-        int16_t machine_id = -1, task_id = -1;
-        size_t duration = 0, scheduled_time = -1;
+    struct interval {
+
+        time32_t start, end;
+        struct task* task;
+
+        inline static time32_t infinity = std::numeric_limits<time32_t>::max();
+
+        interval(time32_t start, time32_t end, struct task* task) : start(start), end(end), task(task) {}
+
+        static interval empty(time32_t start = 0, time32_t end = infinity) {
+            return {start, end, nullptr};
+        }
+
+        [[nodiscard]] bool occupied() const {
+            return task != nullptr;
+        }
+
+        [[nodiscard]] bool includes(time32_t time) const {
+            return start <= time and time <= end;
+        }
+
+        [[nodiscard]] bool includes(time32_t from, time32_t duration) const {
+            return std::max(start, from) + duration - 1 <= end;
+        }
     };
 
     struct task {
-        int16_t id = -1;
-        std::vector<sub_task> sequence;
-        size_t last_scheduled_time = 0;
+
+        struct job& parent;
+        id32_t machine_id = 0;
+        time32_t duration = 0, scheduled_time = 0;
+
+        explicit task(job& parent) : parent(parent) {}
+    };
+
+    struct job {
+
+        id32_t id;
+        std::vector<task> sequence;
+        time32_t last_scheduled_time = 0;
+
+        explicit job(id32_t id) : id(id) {}
     };
 
     struct dataset {
-        size_t machine_count = 0;
-        std::vector<task> tasks;
 
-        static dataset from_file(const char* path) {
+        id32_t machine_count = 0;
+        std::vector<job> jobs;
+
+        void load_from_file(const char* path) {
             std::ifstream file(path);
             if (not file.is_open()) throw std::runtime_error("Could not open file " + std::string(path));
-            dataset result;
-            size_t task_count;
-            file >> task_count;
-            file >> result.machine_count;
-            for (size_t i = 0; i < task_count; i++) {
-                task t;
-                t.id = (int16_t) i;
-                for (size_t j = 0; j < result.machine_count; j++) {
-                    sub_task st;
+            id32_t job_count;
+            file >> job_count;
+            file >> machine_count;
+            jobs.reserve(job_count);
+            for (id32_t i = 0; i < job_count; i++) {
+                job& t = jobs.emplace_back(i);
+                t.sequence.reserve(machine_count);
+                for (id32_t j = 0; j < machine_count; j++) {
+                    task& st = t.sequence.emplace_back(t);
                     file >> st.machine_id;
                     file >> st.duration;
-                    st.task_id = (int16_t) i;
-                    t.sequence.push_back(st);
                 }
-                result.tasks.push_back(t);
             }
-            return result;
-        }
-
-        task& get_task(int16_t id) {
-            return *std::find_if(tasks.begin(), tasks.end(),
-                                 [&](const auto& item) { return item.id == id; });
+            file.close();
         }
     };
 }

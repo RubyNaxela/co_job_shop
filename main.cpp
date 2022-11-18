@@ -51,6 +51,6 @@ int main(int argc, char** argv) {
     }
 
     //if (display_gantt_chart) std::cout << schedule.gantt_chart() << std::endl;
-    
+   
     return 0;
 }
