@@ -78,10 +78,6 @@ namespace js {
             task.parent.last_scheduled_time = start + task.duration;
         }
 
-        [[nodiscard]] time32_t longest_timeline() const {
-            return std::max_element(table.begin(), table.end())->length();
-        }
-
 #ifndef WINDOZE
 
         static std::string
@@ -97,6 +93,10 @@ namespace js {
 #endif
 
     public:
+
+        [[nodiscard]] time32_t longest_timeline() const {
+            return std::max_element(table.begin(), table.end())->length();
+        }
 
         explicit schedule(dataset& data) : table(std::vector<timeline>(data.machine_count)), data(data) {
             for (auto& timeline : table) timeline.add(interval::empty());
