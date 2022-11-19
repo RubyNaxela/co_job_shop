@@ -26,8 +26,11 @@ int main(int argc, char** argv) {
     buffer << data_file.rdbuf();
     std::string data_string = buffer.str();
 
-    std::optional<js::time32_t> shortest_time;
-    std::string solution;
+    struct {
+        js::basic_schedule schedule;
+        std::string summary;
+        std::optional<js::time32_t> time;
+    } solution;
 
     const js::heuristic heuristics[] = {js::heuristics::alex_forward, js::heuristics::alex_backward,
                                         js::heuristics::stachu_ascending, js::heuristics::stachu_descending};
@@ -39,21 +42,21 @@ int main(int argc, char** argv) {
         js::schedule schedule(data);
         schedule.schedule_jobs(heuristic);
 
-        if (not shortest_time.has_value() or schedule.longest_timeline() < shortest_time) {
-            solution = schedule.summary();
-            shortest_time = schedule.longest_timeline();
+        if (not solution.time.has_value() or schedule.longest_timeline() < solution.time) {
+            if (display_gantt_chart) solution.schedule = *dynamic_cast<js::basic_schedule*>(&schedule);
+            solution.summary = schedule.summary();
+            solution.time = schedule.longest_timeline();
         }
     }
 
     if (not output_path.empty()) {
         js::create_directory(output_path);
         std::ofstream file_out(output_path);
-        file_out << solution;
+        file_out << solution.summary;
         file_out.close();
-    }
-    std::cout << solution;
+    } else std::cout << solution.summary;
 
-    // if (display_gantt_chart) std::cout << schedule->gantt_chart() << std::endl;
+    if (display_gantt_chart) std::cout << std::endl << solution.schedule.gantt_chart() << std::endl;
 
     return 0;
 }

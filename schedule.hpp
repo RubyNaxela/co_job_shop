@@ -14,18 +14,18 @@ namespace js {
     struct interval {
 
         time32_t start, end;
-        task* task;
+        id32_t task_job_id;
 
         inline static time32_t infinity = std::numeric_limits<time32_t>::max();
 
-        interval(time32_t start, time32_t end, struct task* task) : start(start), end(end), task(task) {}
+        interval(time32_t start, time32_t end, id32_t task_job_id) : start(start), end(end), task_job_id(task_job_id) {}
 
         static interval empty(time32_t start = 0, time32_t end = infinity) {
-            return {start, end, nullptr};
+            return {start, end, -1};
         }
 
         [[nodiscard]] bool occupied() const {
-            return task != nullptr;
+            return task_job_id != -1;
         }
 
         [[nodiscard]] bool includes(time32_t time) const {
@@ -70,10 +70,11 @@ namespace js {
 
         [[nodiscard]] std::vector<id32_t> quantized(time32_t limit) const {
             std::vector<id32_t> result(limit);
+            time32_t t = 0;
             for (const auto& interval : intervals) {
                 for (time32_t i = interval.start; i <= interval.end and i < limit; i++) {
-                    if (interval.occupied()) result.push_back(interval.task->parent.id);
-                    else result.push_back(-1);
+                    if (interval.occupied()) result[t++] = interval.task_job_id;
+                    else result[t++] = -1;
                 }
             }
             return result;
@@ -85,45 +86,6 @@ namespace js {
     };
 
     class basic_schedule {
-
-    protected:
-
-        std::vector<timeline> table;
-
-        explicit basic_schedule(size_t machine_count) : table(std::vector<timeline>(machine_count)) {}
-
-        static void schedule_task(task& task, timeline& timeline, const timeline::pointer& interval, time32_t start) {
-
-            const time32_t interval_start = interval->start, interval_end = interval->end;
-            const bool empty_before = start > interval_start, empty_after = start + task.duration - 1 < interval_end;
-
-            interval->task = &task;
-            interval->start = start;
-            interval->end = start + task.duration - 1;
-
-            if (empty_before) timeline.insert_before(interval, interval::empty(interval_start, start - 1));
-            if (empty_after) timeline.insert_after(interval, interval::empty(start + task.duration, interval_end));
-
-            task.scheduled_time = start;
-            task.parent.last_scheduled_time = start + task.duration;
-        }
-
-        [[nodiscard]] time32_t longest_timeline() const {
-            return std::max_element(table.begin(), table.end())->length();
-        }
-    };
-
-    class schedule : basic_schedule {
-
-        dataset& data;
-
-        void add_task(task& task) {
-            timeline& timeline = table[task.machine_id];
-            const time32_t job_end = task.parent.last_scheduled_time;
-            auto time = timeline.interval_at(job_end);
-            while (time->occupied() or not time->includes(job_end, task.duration)) ++time;
-            schedule_task(task, timeline, time, std::max(time->start, job_end));
-        }
 
 #ifndef WINDOZE
 
@@ -137,22 +99,38 @@ namespace js {
         }
 #endif
 
-    public:
+    protected:
 
-        explicit schedule(dataset& data) : basic_schedule(data.machine_count), data(data) {
+        std::vector<timeline> table;
+        size_t jobs_count = 0;
+
+        explicit basic_schedule(size_t machine_count, size_t jobs_count)
+                : table(std::vector<timeline>(machine_count)), jobs_count(jobs_count) {
             for (auto& timeline : table) timeline.add(interval::empty());
         }
 
-        void schedule_jobs(const js::heuristic& heuristic) {
-            const time32_t sequence_length = data.jobs[0].sequence.size();
-            for (time32_t i = 0; i < sequence_length; i++) {
-                std::vector<js::job*> jobs_order(data.jobs.size());
-                std::iota(jobs_order.begin(), jobs_order.end(), &data.jobs[0]);
-                std::sort(jobs_order.begin(), jobs_order.end(),
-                          [=](const js::job* a, const js::job* b) { return heuristic(a, b, i); });
-                for (job* job : jobs_order) add_task(job->sequence[i]);
-            }
-            std::sort(data.jobs.begin(), data.jobs.end(), [](const job& a, const job& b) { return a.id < b.id; });
+        static void schedule_task(task& task, timeline& timeline, const timeline::pointer& interval, time32_t start) {
+
+            const time32_t interval_start = interval->start, interval_end = interval->end;
+            const bool empty_before = start > interval_start, empty_after = start + task.duration - 1 < interval_end;
+
+            interval->task_job_id = task.parent.id;
+            interval->start = start;
+            interval->end = start + task.duration - 1;
+
+            if (empty_before) timeline.insert_before(interval, interval::empty(interval_start, start - 1));
+            if (empty_after) timeline.insert_after(interval, interval::empty(start + task.duration, interval_end));
+
+            task.scheduled_time = start;
+            task.parent.last_scheduled_time = start + task.duration;
+        }
+
+    public:
+
+        basic_schedule() = default;
+
+        [[nodiscard]] time32_t longest_timeline() const {
+            return std::max_element(table.begin(), table.end())->length();
         }
 
         [[nodiscard]] std::string gantt_chart() {
@@ -160,8 +138,8 @@ namespace js {
             std::ostringstream chart;
 
             const time32_t longest = longest_timeline();
-            const auto cell_width = uint8_t(std::max(std::log10(longest), std::log10(data.jobs.size())) + 1);
-            const auto left_col_width = uint8_t(std::log10(data.machine_count) + 1);
+            const auto cell_width = uint8_t(std::max(std::log10(longest), std::log10(jobs_count)) + 1);
+            const auto left_col_width = uint8_t(std::log10(table.size()) + 1);
             const std::string l_hd_format = "%0" + std::to_string(left_col_width) + "hd";
             const std::string zu_format = "%0" + std::to_string(cell_width) + "zu";
             const std::string hd_format = "%0" + std::to_string(cell_width) + "hd";
@@ -191,6 +169,35 @@ namespace js {
             delete[] id_string;
             return chart.str();
         };
+    };
+
+    class schedule : public basic_schedule {
+
+        dataset& data;
+
+        void add_task(task& task) {
+            timeline& timeline = table[task.machine_id];
+            const time32_t job_end = task.parent.last_scheduled_time;
+            auto time = timeline.interval_at(job_end);
+            while (time->occupied() or not time->includes(job_end, task.duration)) ++time;
+            schedule_task(task, timeline, time, std::max(time->start, job_end));
+        }
+
+    public:
+
+        explicit schedule(dataset& data) : basic_schedule(data.machines_count, data.jobs_count), data(data) {}
+
+        void schedule_jobs(const js::heuristic& heuristic) {
+            const size_t sequence_length = data.jobs[0].sequence.size();
+            for (size_t i = 0; i < sequence_length; i++) {
+                std::vector<js::job*> jobs_order(data.jobs_count);
+                std::iota(jobs_order.begin(), jobs_order.end(), &data.jobs[0]);
+                std::sort(jobs_order.begin(), jobs_order.end(),
+                          [=](const js::job* a, const js::job* b) { return heuristic(a, b, i); });
+                for (job* job : jobs_order) add_task(job->sequence[i]);
+            }
+            std::sort(data.jobs.begin(), data.jobs.end(), [](const job& a, const job& b) { return a.id < b.id; });
+        }
 
         [[nodiscard]] std::string summary() const {
             std::ostringstream summary;

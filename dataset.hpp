@@ -29,19 +29,18 @@ namespace js {
 
     struct dataset {
 
-        id32_t machine_count = 0;
+        size_t machines_count = 0, jobs_count = 0;
         std::vector<job> jobs;
 
         void load_from_memory(const std::string& data_string) {
             std::istringstream data_stream(data_string);
-            id32_t job_count;
-            data_stream >> job_count;
-            data_stream >> machine_count;
-            jobs.reserve(job_count);
-            for (id32_t i = 0; i < job_count; i++) {
+            data_stream >> jobs_count;
+            data_stream >> machines_count;
+            jobs.reserve(jobs_count);
+            for (id32_t i = 0; i < jobs_count; i++) {
                 job& t = jobs.emplace_back(i);
-                t.sequence.reserve(machine_count);
-                for (id32_t j = 0; j < machine_count; j++) {
+                t.sequence.reserve(machines_count);
+                for (id32_t j = 0; j < machines_count; j++) {
                     task& st = t.sequence.emplace_back(t);
                     data_stream >> st.machine_id;
                     data_stream >> st.duration;
