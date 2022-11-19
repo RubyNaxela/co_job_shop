@@ -79,6 +79,14 @@ namespace js {
             task.parent.last_scheduled_time = start + task.duration;
         }
 
+        void add_task(task& task) {
+            timeline& timeline = table[task.machine_id];
+            const time32_t job_end = task.parent.last_scheduled_time;
+            auto time = timeline.interval_at(job_end);
+            while (time->occupied() or not time->includes(job_end, task.duration)) ++time;
+            schedule_task(task, timeline, time, std::max(time->start, job_end));
+        }
+
 #ifndef WINDOZE
 
         static std::string colored(const char* text, id32_t color) {
@@ -97,16 +105,16 @@ namespace js {
             for (auto& timeline : table) timeline.add(interval::empty());
         }
 
-        void add_task(task& task) {
-            timeline& timeline = table[task.machine_id];
-            const time32_t job_end = task.parent.last_scheduled_time;
-            auto time = timeline.interval_at(job_end);
-            while (time->occupied() or not time->includes(job_end, task.duration)) ++time;
-            schedule_task(task, timeline, time, std::max(time->start, job_end));
-        }
-
-        [[nodiscard]] dataset& get_dataset() const {
-            return data;
+        void schedule_jobs(const js::heuristic& heuristic) {
+            const time32_t sequence_length = data.jobs[0].sequence.size();
+            for (time32_t i = 0; i < sequence_length; i++) {
+                std::vector<js::job*> jobs_order(data.jobs.size());
+                std::iota(jobs_order.begin(), jobs_order.end(), &data.jobs[0]);
+                std::sort(jobs_order.begin(), jobs_order.end(),
+                          [=](const js::job* a, const js::job* b) { return heuristic(a, b, i); });
+                for (job* job : jobs_order) add_task(job->sequence[i]);
+            }
+            std::sort(data.jobs.begin(), data.jobs.end(), [](const job& a, const job& b) { return a.id < b.id; });
         }
 
         [[nodiscard]] time32_t longest_timeline() const {
@@ -138,10 +146,10 @@ namespace js {
                 sprintf(id_string, fmt1, machine_id);
                 chart << id_string << ": ";
                 chart << '|';
-                for (id32_t task_id : table[machine_id].quantized(longest)) {
-                    sprintf(id_string, fmt3, task_id);
-                    if (task_id == -1) chart << empty;
-                    else chart << colored(id_string, task_id) << '|';
+                for (id32_t job_id : table[machine_id].quantized(longest)) {
+                    sprintf(id_string, fmt3, job_id);
+                    if (job_id == -1) chart << empty;
+                    else chart << colored(id_string, job_id) << '|';
                 }
                 chart << std::endl;
             }
@@ -153,10 +161,8 @@ namespace js {
         [[nodiscard]] std::string summary() const {
             std::ostringstream summary;
             summary << longest_timeline() << '\n';
-            std::vector<job>& tasks = data.jobs;
-            std::sort(tasks.begin(), tasks.end(), [](const job& a, const job& b) { return a.id < b.id; });
-            for (const auto& task : tasks) {
-                for (const auto& sub_task : task.sequence) summary << sub_task.scheduled_time << ' ';
+            for (const auto& job : data.jobs) {
+                for (const auto& task : job.sequence) summary << task.scheduled_time << ' ';
                 summary << '\n';
             }
             return summary.str();

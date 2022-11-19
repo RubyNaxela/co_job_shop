@@ -1,7 +1,6 @@
 #include <fstream>
 #include <iostream>
 #include <stdexcept>
-#include "dispatcher.hpp"
 #include "heuristics.hpp"
 #include "platform.hpp"
 #include "schedule.hpp"
@@ -38,7 +37,7 @@ int main(int argc, char** argv) {
         data.load_from_memory(data_string);
 
         js::schedule schedule(data);
-        js::schedule_jobs(schedule, heuristic);
+        schedule.schedule_jobs(heuristic);
 
         if (first or schedule.longest_timeline() < shortest_time) {
             solution = schedule.summary();
