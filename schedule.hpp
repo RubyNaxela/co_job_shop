@@ -84,10 +84,13 @@ namespace js {
         }
     };
 
-    class schedule {
+    class basic_schedule {
+
+    protected:
 
         std::vector<timeline> table;
-        dataset& data;
+
+        explicit basic_schedule(size_t machine_count) : table(std::vector<timeline>(machine_count)) {}
 
         static void schedule_task(task& task, timeline& timeline, const timeline::pointer& interval, time32_t start) {
 
@@ -104,6 +107,15 @@ namespace js {
             task.scheduled_time = start;
             task.parent.last_scheduled_time = start + task.duration;
         }
+
+        [[nodiscard]] time32_t longest_timeline() const {
+            return std::max_element(table.begin(), table.end())->length();
+        }
+    };
+
+    class schedule : basic_schedule {
+
+        dataset& data;
 
         void add_task(task& task) {
             timeline& timeline = table[task.machine_id];
@@ -127,7 +139,7 @@ namespace js {
 
     public:
 
-        explicit schedule(dataset& data) : table(std::vector<timeline>(data.machine_count)), data(data) {
+        explicit schedule(dataset& data) : basic_schedule(data.machine_count), data(data) {
             for (auto& timeline : table) timeline.add(interval::empty());
         }
 
@@ -141,10 +153,6 @@ namespace js {
                 for (job* job : jobs_order) add_task(job->sequence[i]);
             }
             std::sort(data.jobs.begin(), data.jobs.end(), [](const job& a, const job& b) { return a.id < b.id; });
-        }
-
-        [[nodiscard]] time32_t longest_timeline() const {
-            return std::max_element(table.begin(), table.end())->length();
         }
 
         [[nodiscard]] std::string gantt_chart() {
