@@ -1,5 +1,6 @@
 #include <fstream>
 #include <iostream>
+#include <optional>
 #include <stdexcept>
 #include "heuristics.hpp"
 #include "platform.hpp"
@@ -25,8 +26,7 @@ int main(int argc, char** argv) {
     buffer << data_file.rdbuf();
     std::string data_string = buffer.str();
 
-    bool first = true;
-    js::time32_t shortest_time;
+    std::optional<js::time32_t> shortest_time;
     std::string solution;
 
     const js::heuristic heuristics[] = {js::heuristics::alex_forward, js::heuristics::alex_backward,
@@ -39,10 +39,9 @@ int main(int argc, char** argv) {
         js::schedule schedule(data);
         schedule.schedule_jobs(heuristic);
 
-        if (first or schedule.longest_timeline() < shortest_time) {
+        if (not shortest_time.has_value() or schedule.longest_timeline() < shortest_time) {
             solution = schedule.summary();
             shortest_time = schedule.longest_timeline();
-            first = false;
         }
     }
 
