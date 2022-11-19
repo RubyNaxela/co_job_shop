@@ -11,6 +11,32 @@
 
 namespace js {
 
+    struct interval {
+
+        time32_t start, end;
+        task* task;
+
+        inline static time32_t infinity = std::numeric_limits<time32_t>::max();
+
+        interval(time32_t start, time32_t end, struct task* task) : start(start), end(end), task(task) {}
+
+        static interval empty(time32_t start = 0, time32_t end = infinity) {
+            return {start, end, nullptr};
+        }
+
+        [[nodiscard]] bool occupied() const {
+            return task != nullptr;
+        }
+
+        [[nodiscard]] bool includes(time32_t time) const {
+            return start <= time and time <= end;
+        }
+
+        [[nodiscard]] bool includes(time32_t from, time32_t duration) const {
+            return std::max(start, from) + duration - 1 <= end;
+        }
+    };
+
     class timeline {
 
         std::list<interval> intervals;

@@ -9,30 +9,13 @@ namespace js {
     typedef uint32_t time32_t;
     typedef int32_t id32_t;
 
-    struct interval {
+    struct task {
 
-        time32_t start, end;
-        struct task* task;
+        struct job& parent;
+        id32_t machine_id = 0;
+        time32_t duration = 0, scheduled_time = 0;
 
-        inline static time32_t infinity = std::numeric_limits<time32_t>::max();
-
-        interval(time32_t start, time32_t end, struct task* task) : start(start), end(end), task(task) {}
-
-        static interval empty(time32_t start = 0, time32_t end = infinity) {
-            return {start, end, nullptr};
-        }
-
-        [[nodiscard]] bool occupied() const {
-            return task != nullptr;
-        }
-
-        [[nodiscard]] bool includes(time32_t time) const {
-            return start <= time and time <= end;
-        }
-
-        [[nodiscard]] bool includes(time32_t from, time32_t duration) const {
-            return std::max(start, from) + duration - 1 <= end;
-        }
+        explicit task(job& parent) : parent(parent) {}
     };
 
     struct job {
@@ -42,15 +25,6 @@ namespace js {
         time32_t last_scheduled_time = 0;
 
         explicit job(id32_t id) : id(id) {}
-    };
-
-    struct task {
-
-        job& parent;
-        id32_t machine_id = 0;
-        time32_t duration = 0, scheduled_time = 0;
-
-        explicit task(job& parent) : parent(parent) {}
     };
 
     struct dataset {
