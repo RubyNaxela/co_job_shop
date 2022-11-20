@@ -32,10 +32,11 @@ namespace js {
         size_t machines_count = 0, jobs_count = 0;
         std::vector<job> jobs;
 
-        void load_from_memory(const std::string& data_string) {
+        void load_from_memory(const std::string& data_string, uint16_t limit = 0) {
             std::istringstream data_stream(data_string);
             data_stream >> jobs_count;
             data_stream >> machines_count;
+            if (limit > 0) jobs_count = limit;
             jobs.reserve(jobs_count);
             for (id32_t i = 0; i < jobs_count; i++) {
                 job& t = jobs.emplace_back(i);

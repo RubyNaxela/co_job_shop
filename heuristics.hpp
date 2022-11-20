@@ -1,6 +1,7 @@
 #ifndef JOB_SHOP_HEURISTICS
 #define JOB_SHOP_HEURISTICS
 
+#include <functional>
 #include "dataset.hpp"
 
 namespace js {
