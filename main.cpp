@@ -2,12 +2,34 @@
 #include <iostream>
 #include <optional>
 #include <stdexcept>
+#include <vector>
 #include "heuristics.hpp"
 #include "platform.hpp"
 #include "schedule.hpp"
+#include "random.hpp"
+#include "range.hpp"
 #include "timer.hpp"
 
 // http://www.cs.put.poznan.pl/mdrozdowski/dyd/ok/index.html
+
+bool should_redraw(size_t r1, size_t r2, const std::vector<js::task*>& insertion_order, size_t machines_count) {
+
+    if (r1 == r2 or insertion_order[r1]->parent.id == insertion_order[r2]->parent.id) return true;
+
+    const size_t swap_candidates[2] = {r1, r2};
+    for (size_t c : swap_candidates) {
+        const js::task* candidate = insertion_order[c];
+        const auto same_job_as_c = [&](const js::task* t) { return t->parent.id == candidate->parent.id; };
+        if (candidate->sequence_order < machines_count - 1) {
+            const auto t = *std::find_if(insertion_order.begin() + ptrdiff_t(c + 1), insertion_order.end(), same_job_as_c);
+            if (t->sequence_order != candidate->sequence_order + 1) return true;
+        } else {
+            const auto t = *std::find_if(insertion_order.rend() - ptrdiff_t(c + 1), insertion_order.rend(), same_job_as_c);
+            if (t->sequence_order != candidate->sequence_order - 1) return true;
+        }
+    }
+    return false;
+}
 
 int main(int argc, char** argv) {
 
@@ -51,7 +73,28 @@ int main(int argc, char** argv) {
             data.load_from_memory(data_string, limit);
 
             js::schedule schedule(data);
-            schedule.schedule_jobs(heuristic);
+            std::vector<js::task*> insertion_order = schedule.schedule_jobs(heuristic);
+            std::cout << "\nInsertion order: ";
+            for (const auto& task : insertion_order)
+                std::cout << "j" << task->parent.id << "::t" << task->sequence_order << " ";
+            std::cout << "\n\n" << schedule.gantt_chart() << std::endl;
+
+            size_t random_operation1 = -1, random_operation2 = -1;
+            const js::range<size_t> tasks_range = js::make_range<size_t, js::closed_open>(0, insertion_order.size());
+            while (should_redraw(random_operation1, random_operation2, insertion_order, data.machines_count)) {
+                random_operation1 = js::random_number<size_t>(tasks_range);
+                random_operation2 = js::random_number<size_t>(tasks_range);
+            }
+            std::swap(insertion_order[random_operation1], insertion_order[random_operation2]);
+
+            for (js::job& job : data.jobs) job.last_scheduled_time = 0;
+
+            js::schedule schedule2(data);
+            schedule2.schedule_jobs(insertion_order);
+            std::cout << "Insertion order: ";
+            for (const auto& task : insertion_order)
+                std::cout << "j" << task->parent.id << "::t" << task->sequence_order << " ";
+            std::cout << "\n\n" << schedule2.gantt_chart() << std::endl;
 
             if (not solution.time.has_value() or schedule.longest_timeline() < solution.time) {
                 if (display_gantt_chart) solution.schedule = *dynamic_cast<js::basic_schedule*>(&schedule);

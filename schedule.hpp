@@ -187,16 +187,23 @@ namespace js {
 
         explicit schedule(dataset& data) : basic_schedule(data.machines_count, data.jobs_count), data(data) {}
 
-        void schedule_jobs(const js::heuristic& heuristic) {
+        std::vector<task*> schedule_jobs(const js::heuristic& heuristic) {
             const size_t sequence_length = data.jobs[0].sequence.size();
+            std::vector<task*> insertion_order;
             for (size_t i = 0; i < sequence_length; i++) {
                 std::vector<js::job*> jobs_order(data.jobs_count);
                 std::iota(jobs_order.begin(), jobs_order.end(), &data.jobs[0]);
                 std::sort(jobs_order.begin(), jobs_order.end(),
                           [=](const js::job* a, const js::job* b) { return heuristic(a, b, i); });
-                for (job* job : jobs_order) add_task(job->sequence[i]);
+                for (job* job : jobs_order) insertion_order.push_back(&job->sequence[i]);
             }
+            for (task* task : insertion_order) add_task(*task);
             std::sort(data.jobs.begin(), data.jobs.end(), [](const job& a, const job& b) { return a.id < b.id; });
+            return std::forward<std::vector<task*>>(insertion_order);
+        }
+
+        void schedule_jobs(const std::vector<task*>& insertion_order) {
+            for (task* task : insertion_order) add_task(*task);
         }
 
         [[nodiscard]] std::string summary() const {

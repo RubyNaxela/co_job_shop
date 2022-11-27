@@ -12,7 +12,7 @@ namespace js {
     struct task {
 
         struct job& parent;
-        id32_t machine_id = 0;
+        id32_t machine_id = 0, sequence_order = 0;
         time32_t duration = 0, scheduled_time = 0;
 
         explicit task(job& parent) : parent(parent) {}
@@ -38,13 +38,14 @@ namespace js {
             data_stream >> machines_count;
             if (limit > 0) jobs_count = limit;
             jobs.reserve(jobs_count);
-            for (id32_t i = 0; i < jobs_count; i++) {
-                job& t = jobs.emplace_back(i);
-                t.sequence.reserve(machines_count);
-                for (id32_t j = 0; j < machines_count; j++) {
-                    task& st = t.sequence.emplace_back(t);
-                    data_stream >> st.machine_id;
-                    data_stream >> st.duration;
+            for (id32_t j = 0; j < jobs_count; j++) {
+                job& job = jobs.emplace_back(j);
+                job.sequence.reserve(machines_count);
+                for (id32_t m = 0; m < machines_count; m++) {
+                    task& task = job.sequence.emplace_back(job);
+                    task.sequence_order = m;
+                    data_stream >> task.machine_id;
+                    data_stream >> task.duration;
                 }
             }
         }
