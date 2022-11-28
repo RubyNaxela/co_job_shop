@@ -8,17 +8,17 @@
 #include <vector>
 #include "dataset.hpp"
 #include "platform.hpp"
+#include "range.hpp"
 
 namespace js {
 
-    struct interval {
+    struct interval : public range<time32_t> {
 
-        time32_t start, end;
         id32_t task_job_id;
 
-        inline static time32_t infinity = std::numeric_limits<time32_t>::max();
+        inline static time32_t infinity = make_range<size_t, infinite>().right;
 
-        interval(time32_t start, time32_t end, id32_t task_job_id) : start(start), end(end), task_job_id(task_job_id) {}
+        interval(time32_t start, time32_t end, id32_t task_job_id) : range<time32_t>(start, end), task_job_id(task_job_id) {}
 
         static interval empty(time32_t start = 0, time32_t end = infinity) {
             return {start, end, -1};
@@ -29,11 +29,11 @@ namespace js {
         }
 
         [[nodiscard]] bool includes(time32_t time) const {
-            return start <= time and time <= end;
+            return left <= time and time <= right;
         }
 
         [[nodiscard]] bool includes(time32_t from, time32_t duration) const {
-            return std::max(start, from) + duration - 1 <= end;
+            return std::max(left, from) + duration - 1 <= right;
         }
     };
 
@@ -52,8 +52,8 @@ namespace js {
 
         [[nodiscard]] time32_t length() const {
             const interval& last = intervals.back();
-            if (last.occupied()) return last.end + 1;
-            else return last.start;
+            if (last.occupied()) return last.right + 1;
+            else return last.left;
         }
 
         void add(interval&& interval) {
@@ -72,7 +72,7 @@ namespace js {
             std::vector<id32_t> result(limit);
             time32_t t = 0;
             for (const auto& interval : intervals) {
-                for (time32_t i = interval.start; i <= interval.end and i < limit; i++) {
+                for (time32_t i = interval.left; i <= interval.right and i < limit; i++) {
                     if (interval.occupied()) result[t++] = interval.task_job_id;
                     else result[t++] = -1;
                 }
@@ -111,12 +111,12 @@ namespace js {
 
         static void schedule_task(task& task, timeline& timeline, const timeline::pointer& interval, time32_t start) {
 
-            const time32_t interval_start = interval->start, interval_end = interval->end;
+            const time32_t interval_start = interval->left, interval_end = interval->right;
             const bool empty_before = start > interval_start, empty_after = start + task.duration - 1 < interval_end;
 
             interval->task_job_id = task.parent.id;
-            interval->start = start;
-            interval->end = start + task.duration - 1;
+            interval->left = start;
+            interval->right = start + task.duration - 1;
 
             if (empty_before) timeline.insert_before(interval, interval::empty(interval_start, start - 1));
             if (empty_after) timeline.insert_after(interval, interval::empty(start + task.duration, interval_end));
@@ -180,7 +180,7 @@ namespace js {
             const time32_t job_end = task.parent.last_scheduled_time;
             auto time = timeline.interval_at(job_end);
             while (time->occupied() or not time->includes(job_end, task.duration)) ++time;
-            schedule_task(task, timeline, time, std::max(time->start, job_end));
+            schedule_task(task, timeline, time, std::max(time->left, job_end));
         }
 
     public:
