@@ -1,39 +1,13 @@
 #ifndef JOB_SHOP_DATASET
 #define JOB_SHOP_DATASET
 
-#include <fstream>
+#include <sstream>
 #include <vector>
 
 namespace js {
 
     typedef uint32_t time32_t;
     typedef int32_t id32_t;
-
-    struct interval {
-
-        time32_t start, end;
-        struct task* task;
-
-        inline static time32_t infinity = std::numeric_limits<time32_t>::max();
-
-        interval(time32_t start, time32_t end, struct task* task) : start(start), end(end), task(task) {}
-
-        static interval empty(time32_t start = 0, time32_t end = infinity) {
-            return {start, end, nullptr};
-        }
-
-        [[nodiscard]] bool occupied() const {
-            return task != nullptr;
-        }
-
-        [[nodiscard]] bool includes(time32_t time) const {
-            return start <= time and time <= end;
-        }
-
-        [[nodiscard]] bool includes(time32_t from, time32_t duration) const {
-            return std::max(start, from) + duration - 1 <= end;
-        }
-    };
 
     struct task {
 
@@ -55,26 +29,24 @@ namespace js {
 
     struct dataset {
 
-        id32_t machine_count = 0;
+        size_t machines_count = 0, jobs_count = 0;
         std::vector<job> jobs;
 
-        void load_from_file(const char* path) {
-            std::ifstream file(path);
-            if (not file.is_open()) throw std::runtime_error("Could not open file " + std::string(path));
-            id32_t job_count;
-            file >> job_count;
-            file >> machine_count;
-            jobs.reserve(job_count);
-            for (id32_t i = 0; i < job_count; i++) {
+        void load_from_memory(const std::string& data_string, uint16_t limit = 0) {
+            std::istringstream data_stream(data_string);
+            data_stream >> jobs_count;
+            data_stream >> machines_count;
+            if (limit > 0) jobs_count = limit;
+            jobs.reserve(jobs_count);
+            for (id32_t i = 0; i < jobs_count; i++) {
                 job& t = jobs.emplace_back(i);
-                t.sequence.reserve(machine_count);
-                for (id32_t j = 0; j < machine_count; j++) {
+                t.sequence.reserve(machines_count);
+                for (id32_t j = 0; j < machines_count; j++) {
                     task& st = t.sequence.emplace_back(t);
-                    file >> st.machine_id;
-                    file >> st.duration;
+                    data_stream >> st.machine_id;
+                    data_stream >> st.duration;
                 }
             }
-            file.close();
         }
     };
 }
