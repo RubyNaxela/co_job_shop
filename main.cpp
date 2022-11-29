@@ -12,23 +12,12 @@
 
 // http://www.cs.put.poznan.pl/mdrozdowski/dyd/ok/index.html
 
-bool should_redraw(size_t r1, size_t r2, const std::vector<js::task*>& insertion_order, size_t machines_count) {
-
-    if (r1 == r2 or insertion_order[r1]->parent.id == insertion_order[r2]->parent.id) return true;
-
-    const size_t swap_candidates[2] = {r1, r2};
-    for (size_t c : swap_candidates) {
-        const js::task* candidate = insertion_order[c];
-        const auto same_job_as_c = [&](const js::task* t) { return t->parent.id == candidate->parent.id; };
-        if (candidate->sequence_order < machines_count - 1) {
-            const auto t = *std::find_if(insertion_order.begin() + ptrdiff_t(c + 1), insertion_order.end(), same_job_as_c);
-            if (t->sequence_order != candidate->sequence_order + 1) return true;
-        } else {
-            const auto t = *std::find_if(insertion_order.rend() - ptrdiff_t(c + 1), insertion_order.rend(), same_job_as_c);
-            if (t->sequence_order != candidate->sequence_order - 1) return true;
-        }
-    }
-    return false;
+bool swappable(size_t r1, size_t r2, const std::vector<js::task*>& insertion_order) {
+    const js::task& t1 = *insertion_order[r1], t2 = *insertion_order[r2];
+    if (t1.parent.id == t2.parent.id) return false;
+    if (r1 > r2) std::swap(r1, r2);
+    return std::none_of(insertion_order.begin() + ptrdiff_t(r1) + 1, insertion_order.begin() + ptrdiff_t(r2),
+                        [&](const js::task* t) { return t->parent.id == t1.parent.id or t->parent.id == t2.parent.id; });
 }
 
 int main(int argc, char** argv) {
@@ -79,9 +68,9 @@ int main(int argc, char** argv) {
                 std::cout << "j" << task->parent.id << "::t" << task->sequence_order << " ";
             std::cout << "\n\n" << schedule.gantt_chart() << std::endl;
 
-            size_t random_operation1 = -1, random_operation2 = -1;
             const js::range<size_t> tasks_range = js::make_range<size_t, js::closed_open>(0, insertion_order.size());
-            while (should_redraw(random_operation1, random_operation2, insertion_order, data.machines_count)) {
+            size_t random_operation1 = 0, random_operation2 = 0;
+            while (not swappable(random_operation1, random_operation2, insertion_order)) {
                 random_operation1 = js::random_number<size_t>(tasks_range);
                 random_operation2 = js::random_number<size_t>(tasks_range);
             }
