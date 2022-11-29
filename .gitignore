@@ -3,6 +3,7 @@
 /.idea
 /.vscode
 /cmake-build-debug/
+/doc/draft/
 /packages/
 /test/orlib
 /test/tailard
