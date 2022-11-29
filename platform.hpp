@@ -2,6 +2,7 @@
 #include <cstdio>
 #include <filesystem>
 #include <memory>
+#include <sstream>
 #include <stdexcept>
 
 #ifndef JOB_SHOP_PLATFORM
@@ -34,9 +35,11 @@ namespace js {
     }
 
     void create_directory(const std::string& path) {
-        std::filesystem::path directory = path;
+        std::ostringstream path_builder;
+        path_builder << "." << path_sep << path;
+        std::filesystem::path directory = path_builder.str();
         directory.remove_filename();
-        std::filesystem::create_directories(directory);
+        if (not std::filesystem::exists(directory)) std::filesystem::create_directories(directory);
     }
 
     std::string execute(const std::string& command) {
