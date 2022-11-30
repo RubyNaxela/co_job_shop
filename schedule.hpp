@@ -193,8 +193,11 @@ namespace js {
             for (size_t i = 0; i < sequence_length; i++) {
                 std::vector<js::job*> jobs_order(data.jobs_count);
                 std::iota(jobs_order.begin(), jobs_order.end(), &data.jobs[0]);
-                std::sort(jobs_order.begin(), jobs_order.end(),
-                          [=](const js::job* a, const js::job* b) { return heuristic(a, b, i); });
+                if (heuristic.first == sort)
+                    std::sort(jobs_order.begin(), jobs_order.end(),
+                              [=](const js::job* a, const js::job* b) { return heuristic.second(a, b, i); });
+                else if (heuristic.first == reverse)
+                    std::reverse(jobs_order.begin(), jobs_order.end());
                 for (job* job : jobs_order) insertion_order.push_back(&job->sequence[i]);
             }
             for (task* task : insertion_order) add_task(*task);

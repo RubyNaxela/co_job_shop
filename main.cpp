@@ -53,8 +53,10 @@ int main(int argc, char** argv) {
             std::optional<js::time32_t> time;
         } solution;
 
-        const js::heuristic heuristics[] = {js::heuristics::alex_forward, js::heuristics::alex_backward,
-                                            js::heuristics::stachu_ascending, js::heuristics::stachu_descending};
+        const js::heuristic heuristics[] = {{js::do_nothing, js::heuristics::pass},
+                                            {js::reverse, js::heuristics::pass},
+                                            {js::sort, js::heuristics::stachu_ascending},
+                                            {js::sort, js::heuristics::stachu_descending}};
 
         for (const auto& heuristic : heuristics) {
 
