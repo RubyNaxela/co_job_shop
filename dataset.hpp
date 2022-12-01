@@ -8,6 +8,7 @@ namespace js {
 
     typedef uint32_t time32_t;
     typedef int32_t id32_t;
+    typedef uint64_t hash_t;
 
     struct job {
 
@@ -40,8 +41,8 @@ namespace js {
         size_t machines_count = 0, jobs_count = 0;
         std::vector<job> jobs;
 
-        explicit dataset(const std::string& data_string, uint16_t limit = 0) {
-            std::istringstream data_stream(data_string);
+        explicit dataset(const std::string& data_source, uint16_t limit = 0) {
+            std::istringstream data_stream(data_source);
             data_stream >> jobs_count;
             data_stream >> machines_count;
             if (limit > 0) jobs_count = limit;
@@ -62,6 +63,10 @@ namespace js {
             return const_cast<task&>(std::find_if(jobs.begin(), jobs.end(), [&](const job& job) {
                 return job.id == coordinates.job_id;
             })->sequence[coordinates.task_id]);
+        }
+
+        void reset_schedule_times() {
+            for (job& job : jobs) job.last_scheduled_time = 0;
         }
     };
 }

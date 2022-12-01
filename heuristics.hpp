@@ -7,24 +7,35 @@
 
 namespace js {
 
-    enum heuristic_mod { do_nothing, reverse, sort };
+    struct heuristic {
 
-    typedef std::pair<heuristic_mod, std::function<bool(const js::job*, const js::job*, size_t)>> heuristic;
+        enum order_mod {
+            do_nothing, reverse, sort
+        };
 
-    namespace heuristics {
+        order_mod order_mod;
+        std::function<bool(const job*, const job*, size_t)> comparator;
+        std::string name;
 
-        bool pass(const js::job* a, const js::job* b, size_t i) {
+        static bool pass(const job* a, const job* b, size_t i) {
             return false;
         }
 
-        bool stachu_ascending(const js::job* a, const js::job* b, size_t i) {
+        static bool ascending(const job* a, const job* b, size_t i) {
             return a->sequence[i].duration < b->sequence[i].duration;
         }
 
-        bool stachu_descending(const js::job* a, const js::job* b, size_t i) {
+        static bool descending(const job* a, const job* b, size_t i) {
             return a->sequence[i].duration > b->sequence[i].duration;
         }
-    }
+    };
+
+    const heuristic heuristics[] = {
+            {heuristic::do_nothing, heuristic::pass,       "alex_forward"},
+            {heuristic::reverse,    heuristic::pass,       "alex_backward"},
+            {heuristic::sort,       heuristic::ascending,  "ascending"},
+            {heuristic::sort,       heuristic::descending, "descending"},
+    };
 }
 
 #endif //JOB_SHOP_HEURISTICS

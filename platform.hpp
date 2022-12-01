@@ -47,7 +47,7 @@ namespace js {
         std::unique_ptr<FILE, decltype(&pipe_close)> pipe(pipe_open(command.c_str(), "r"), pipe_close);
         if (!pipe) throw std::runtime_error("execute() failed!");
         while (fgets(buffer.data(), buffer.size(), pipe.get()) != nullptr) result += buffer.data();
-        return std::forward<std::string>(result);
+        return result;
     }
 }
 

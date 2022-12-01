@@ -25,6 +25,18 @@ namespace zr {
         Tp left, right;
 
         range(Tp left, Tp right) : left(left), right(right) {}
+
+        template<typename OTp>
+        requires std::is_integral_v<OTp>
+        [[nodiscard]] bool includes(OTp value) const {
+            return left <= value and value <= right;
+        }
+
+        template<typename OTp>
+        requires std::is_integral_v<OTp>
+        [[nodiscard]] bool includes(const range<OTp>& range) const {
+            return left <= range.left and range.right <= right;
+        }
     };
 
     template<typename Tp, int Class>

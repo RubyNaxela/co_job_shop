@@ -7,6 +7,7 @@
 #include <sstream>
 #include <vector>
 #include "dataset.hpp"
+#include "heuristics.hpp"
 #include "platform.hpp"
 #include "range.hpp"
 
@@ -28,11 +29,7 @@ namespace js {
             return task_job_id != -1;
         }
 
-        [[nodiscard]] bool includes(time32_t time) const {
-            return left <= time and time <= right;
-        }
-
-        [[nodiscard]] bool includes(time32_t from, time32_t duration) const {
+        [[nodiscard]] bool fits_task(time32_t from, time32_t duration) const {
             return std::max(left, from) + duration - 1 <= right;
         }
     };
@@ -47,7 +44,7 @@ namespace js {
 
         [[nodiscard]] pointer interval_at(time32_t time) {
             return std::find_if(intervals.begin(), intervals.end(),
-                                [=](const interval i) { return i.includes(time); });
+                                [=](const interval& i) { return i.includes(time); });
         }
 
         [[nodiscard]] time32_t length() const {
@@ -179,7 +176,7 @@ namespace js {
             timeline& timeline = table[task.machine_id];
             const time32_t job_end = task.parent.last_scheduled_time;
             auto time = timeline.interval_at(job_end);
-            while (time->occupied() or not time->includes(job_end, task.duration)) ++time;
+            while (time->occupied() or not time->fits_task(job_end, task.duration)) ++time;
             schedule_task(task, timeline, time, std::max(time->left, job_end));
         }
 
@@ -189,26 +186,26 @@ namespace js {
 
         explicit schedule(const dataset& data) : basic_schedule(data.machines_count, data.jobs_count), data(data) {}
 
-        std::vector<task*> schedule_jobs(const js::heuristic& heuristic) {
+        std::vector<task*> schedule_jobs(const heuristic& heuristic) {
             const size_t sequence_length = data.jobs[0].sequence.size();
             std::vector<task*> insertion_order;
             for (size_t i = 0; i < sequence_length; i++) {
-                std::vector<js::job*> jobs_order(data.jobs_count);
+                std::vector<job*> jobs_order(data.jobs_count);
                 std::iota(jobs_order.begin(), jobs_order.end(), &data.jobs[0]);
-                if (heuristic.first == sort)
+                if (heuristic.order_mod == heuristic::sort)
                     std::sort(jobs_order.begin(), jobs_order.end(),
-                              [=](const js::job* a, const js::job* b) { return heuristic.second(a, b, i); });
-                else if (heuristic.first == reverse)
+                              [=](const job* a, const job* b) { return heuristic.comparator(a, b, i); });
+                else if (heuristic.order_mod == heuristic::reverse)
                     std::reverse(jobs_order.begin(), jobs_order.end());
                 for (job* job : jobs_order) insertion_order.push_back(&job->sequence[i]);
             }
             for (task* task : insertion_order) add_task(*task);
             std::sort(data.jobs.begin(), data.jobs.end(), [](const job& a, const job& b) { return a.id < b.id; });
-            return std::forward<std::vector<task*>>(insertion_order);
+            return insertion_order;
         }
 
         void schedule_jobs(const std::vector<task_coordinates>& insertion_order) {
-            for (js::task_coordinates coordinates : insertion_order) add_task(data.get_task(coordinates));
+            for (task_coordinates coordinates : insertion_order) add_task(data.get_task(coordinates));
         }
 
         [[nodiscard]] std::string summary() const {
