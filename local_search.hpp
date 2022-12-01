@@ -1,7 +1,7 @@
 #ifndef JOB_SHOP_LOCAL_SEARCH
 #define JOB_SHOP_LOCAL_SEARCH
 
-#include <set>
+#include "avl_tree_set.hpp"
 #include "dataset.hpp"
 #include "schedule.hpp"
 #include "timer.hpp"
@@ -30,10 +30,10 @@ namespace js {
                             [&](js::task_coordinates t) { return t.job_id == t1.job_id or t.job_id == t2.job_id; });
     }
 
-    bool insertion_order_tested(std::vector<task_coordinates> insertion_order, const std::set<hash_t>& tested_orders,
+    bool insertion_order_tested(std::vector<task_coordinates> insertion_order, const zr::avl_tree_set<hash_t>& tested_orders,
                                 size_t t1, size_t t2) {
         std::swap(insertion_order[t1], insertion_order[t2]);
-        return tested_orders.find(hash_insertion_order(insertion_order)) != tested_orders.end();
+        return tested_orders.contains(hash_insertion_order(insertion_order));
     }
 
     void local_search(const std::string& data_string, uint16_t limit, auto& solution,
@@ -41,7 +41,7 @@ namespace js {
 
         dataset data(data_string, limit);
         std::vector<task_coordinates> insertion_order = solution.insertion_order;
-        std::set<hash_t> tested_orders;
+        zr::avl_tree_set<hash_t> tested_orders;
         tested_orders.insert(hash_insertion_order(insertion_order));
 
         const uint64_t start_time = master_timer.get_measured_time();
@@ -64,7 +64,7 @@ namespace js {
                         schedule local_schedule(data);
                         local_schedule.schedule_jobs(insertion_order);
                         swap.time = local_schedule.longest_timeline();
-                        if (best_swaps.empty() or best_swaps[0].time > swap.time) {
+                        if (best_swaps.empty() or swap.time < best_swaps[0].time) {
                             best_swaps.clear();
                             best_swaps.push_back(swap);
                         } else if (best_swaps[0].time == swap.time)
