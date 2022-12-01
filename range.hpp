@@ -3,7 +3,7 @@
 
 #include <limits>
 
-namespace js {
+namespace zr {
 
     enum range_class {
         empty,

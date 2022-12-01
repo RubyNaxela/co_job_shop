@@ -6,7 +6,7 @@
 #include <stdexcept>
 #include <type_traits>
 
-namespace js {
+namespace zr {
 
     template<typename Dur> requires std::chrono::__is_duration<Dur>::value
     class timer {
@@ -41,6 +41,7 @@ namespace js {
         }
 
         uint64_t get_measured_time() {
+            end_point = now();
             Dur time = std::chrono::duration_cast<Dur>(end_point - start_point);
             return time.count();
         }

@@ -9,22 +9,30 @@ namespace js {
     typedef uint32_t time32_t;
     typedef int32_t id32_t;
 
+    struct job {
+
+        id32_t id;
+        std::vector<struct task> sequence;
+        time32_t last_scheduled_time = 0;
+
+        explicit job(id32_t id) : id(id) {}
+    };
+
+    struct task_coordinates {
+        id32_t job_id, task_id;
+    };
+
     struct task {
 
-        struct job& parent;
+        job& parent;
         id32_t machine_id = 0, sequence_order = 0;
         time32_t duration = 0, scheduled_time = 0;
 
         explicit task(job& parent) : parent(parent) {}
-    };
 
-    struct job {
-
-        id32_t id;
-        std::vector<task> sequence;
-        time32_t last_scheduled_time = 0;
-
-        explicit job(id32_t id) : id(id) {}
+        [[nodiscard]] task_coordinates coordinates() const {
+            return {parent.id, sequence_order};
+        }
     };
 
     struct dataset {
@@ -32,7 +40,7 @@ namespace js {
         size_t machines_count = 0, jobs_count = 0;
         std::vector<job> jobs;
 
-        void load_from_memory(const std::string& data_string, uint16_t limit = 0) {
+        explicit dataset(const std::string& data_string, uint16_t limit = 0) {
             std::istringstream data_stream(data_string);
             data_stream >> jobs_count;
             data_stream >> machines_count;
@@ -48,6 +56,12 @@ namespace js {
                     data_stream >> task.duration;
                 }
             }
+        }
+
+        [[nodiscard]] task& get_task(task_coordinates coordinates) const {
+            return const_cast<task&>(std::find_if(jobs.begin(), jobs.end(), [&](const job& job) {
+                return job.id == coordinates.job_id;
+            })->sequence[coordinates.task_id]);
         }
     };
 }

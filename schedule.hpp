@@ -12,11 +12,11 @@
 
 namespace js {
 
-    struct interval : public range<time32_t> {
+    struct interval : public zr::range<time32_t> {
 
         id32_t task_job_id;
 
-        inline static time32_t infinity = make_range<size_t, infinite>().right;
+        inline static time32_t infinity = zr::make_range<size_t, zr::infinite>().right;
 
         interval(time32_t start, time32_t end, id32_t task_job_id) : range<time32_t>(start, end), task_job_id(task_job_id) {}
 
@@ -173,7 +173,7 @@ namespace js {
 
     class schedule : public basic_schedule {
 
-        dataset& data;
+        dataset data;
 
         void add_task(task& task) {
             timeline& timeline = table[task.machine_id];
@@ -185,7 +185,9 @@ namespace js {
 
     public:
 
-        explicit schedule(dataset& data) : basic_schedule(data.machines_count, data.jobs_count), data(data) {}
+        explicit schedule(dataset&& data) : basic_schedule(data.machines_count, data.jobs_count), data(std::move(data)) {}
+
+        explicit schedule(const dataset& data) : basic_schedule(data.machines_count, data.jobs_count), data(data) {}
 
         std::vector<task*> schedule_jobs(const js::heuristic& heuristic) {
             const size_t sequence_length = data.jobs[0].sequence.size();
@@ -205,8 +207,8 @@ namespace js {
             return std::forward<std::vector<task*>>(insertion_order);
         }
 
-        void schedule_jobs(const std::vector<task*>& insertion_order) {
-            for (task* task : insertion_order) add_task(*task);
+        void schedule_jobs(const std::vector<task_coordinates>& insertion_order) {
+            for (js::task_coordinates coordinates : insertion_order) add_task(data.get_task(coordinates));
         }
 
         [[nodiscard]] std::string summary() const {

@@ -4,6 +4,7 @@
 /.vscode
 /cmake-build-debug/
 /doc/draft/
+/doc/v2-pl/
 /packages/
 /test/orlib
 /test/tailard
