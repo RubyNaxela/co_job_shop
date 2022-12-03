@@ -9,7 +9,7 @@ namespace js {
 
     solution find_initial_solution(const std::string& data_source, uint16_t jobs_limit, bool gantt_chart) {
 
-        solution solution;
+        solution solution(data_source, jobs_limit);
 
         for (const auto& heuristic : heuristics) {
 

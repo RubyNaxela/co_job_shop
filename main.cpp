@@ -41,7 +41,7 @@ int main(int argc, char** argv) {
     for (uint32_t it = 0; it < iterations; it++) {
 
         js::solution solution = js::find_initial_solution(data_string, limit, display_gantt_chart);
-        js::local_search(data_string, limit, solution, master_timer, time_constraint * 1000);
+        js::local_search(solution, master_timer, time_constraint * 1000);
 
         if (measure_time) {
             algorithm_timer.stop();

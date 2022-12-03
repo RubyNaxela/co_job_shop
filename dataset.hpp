@@ -23,6 +23,29 @@ namespace js {
         id32_t job_id, task_id;
     };
 
+    struct task_order : public std::vector<js::task_coordinates> {
+
+        explicit task_order(const std::vector<js::task_coordinates>& tasks) {
+            std::vector<js::task_coordinates>::operator=(tasks);
+        };
+
+        hash_t hash() {
+            hash_t hash = size();
+            for (auto& coordinates : *this)
+                hash ^= (uint64_t(coordinates.job_id) << 32 | coordinates.task_id)
+                        + 0x9e3779b9 + (hash << 6) + (hash >> 2);
+            return hash;
+        }
+
+        struct swap {
+
+            size_t t1, t2;
+            time32_t time = std::numeric_limits<time32_t>::max();
+
+            swap(size_t t1, size_t t2) : t1(t1), t2(t2) {}
+        };
+    };
+
     struct task {
 
         job& parent;
@@ -38,10 +61,10 @@ namespace js {
 
     struct dataset {
 
-        size_t machines_count = 0, jobs_count = 0;
+        id32_t machines_count = 0, jobs_count = 0;
         std::vector<job> jobs;
 
-        explicit dataset(const std::string& data_source, uint16_t limit = 0) {
+        explicit dataset(const std::string& data_source, id32_t limit = 0) {
             std::istringstream data_stream(data_source);
             data_stream >> jobs_count;
             data_stream >> machines_count;
@@ -63,10 +86,6 @@ namespace js {
             return const_cast<task&>(std::find_if(jobs.begin(), jobs.end(), [&](const job& job) {
                 return job.id == coordinates.job_id;
             })->sequence[coordinates.task_id]);
-        }
-
-        void reset_schedule_times() {
-            for (job& job : jobs) job.last_scheduled_time = 0;
         }
     };
 }
