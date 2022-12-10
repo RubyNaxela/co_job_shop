@@ -106,7 +106,7 @@ namespace js {
             for (auto& timeline : table) timeline.add(interval::empty());
         }
 
-        static void schedule_task(task& task, timeline& timeline, const timeline::pointer& interval, time32_t start) {
+        static void insert_task(task& task, timeline& timeline, const timeline::pointer& interval, time32_t start) {
 
             const time32_t interval_start = interval->left, interval_end = interval->right;
             const bool empty_before = start > interval_start, empty_after = start + task.duration - 1 < interval_end;
@@ -176,12 +176,12 @@ namespace js {
 
         dataset data;
 
-        void add_task(task& task) {
+        void schedule_task(task& task) {
             timeline& timeline = table[task.machine_id];
             const time32_t job_end = task.parent.last_scheduled_time;
             auto time = timeline.interval_at(job_end);
             while (time->occupied() or not time->fits_task(job_end, task.duration)) ++time;
-            schedule_task(task, timeline, time, std::max(time->left, job_end));
+            insert_task(task, timeline, time, std::max(time->left, job_end));
         }
 
     public:
@@ -203,13 +203,13 @@ namespace js {
                     std::reverse(jobs_order.begin(), jobs_order.end());
                 for (job* job : jobs_order) insertion_order.push_back(&job->sequence[i]);
             }
-            for (task* task : insertion_order) add_task(*task);
+            for (task* task : insertion_order) schedule_task(*task);
             std::sort(data.jobs.begin(), data.jobs.end(), [](const job& a, const job& b) { return a.id < b.id; });
             return insertion_order;
         }
 
         void schedule_jobs(const std::vector<task_coordinates>& insertion_order) {
-            for (task_coordinates coordinates : insertion_order) add_task(data.get_task(coordinates));
+            for (task_coordinates coordinates : insertion_order) schedule_task(data.get_task(coordinates));
         }
 
         [[nodiscard]] std::string summary() const {
