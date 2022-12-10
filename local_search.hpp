@@ -16,29 +16,21 @@ namespace js {
         size_t tasks_count;
         zr::avl_tree_set<hash_t> tested_orders;
 
-        bool swappable(size_t r1, size_t r2) {
-            const js::task_coordinates t1 = insertion_order[r1], t2 = insertion_order[r2];
-            if (t1.job_id == t2.job_id) return false;
-            if (r1 > r2) std::swap(r1, r2);
-            return std::none_of(insertion_order.begin() + ptrdiff_t(r1) + 1, insertion_order.begin() + ptrdiff_t(r2),
-                                [&](js::task_coordinates t) { return t.job_id == t1.job_id or t.job_id == t2.job_id; });
-        }
-
-        bool insertion_order_tested(size_t t1, size_t t2) {
-            std::swap(insertion_order[t1], insertion_order[t2]);
+        bool insertion_order_tested(task_order::deferred_swap swap) {
+            swap.commit();
             const bool tested = tested_orders.contains(insertion_order);
-            std::swap(insertion_order[t1], insertion_order[t2]);
+            swap.revert();
             return tested;
         }
 
-        std::optional<task_order::swap> find_best_swap() {
-            std::vector<task_order::swap> best_swaps;
+        std::optional<task_order::deferred_swap> find_best_swap() {
+            std::vector<task_order::deferred_swap> best_swaps;
             schedule local_schedule(data);
             for (size_t t1 = 0; t1 < tasks_count - 1; t1++) {
                 for (size_t t2 = t1 + 1; t2 < tasks_count; t2++) {
-                    if (swappable(t1, t2) and not insertion_order_tested(t1, t2)) {
-                        task_order::swap swap(t1, t2);
-                        std::swap(insertion_order[t1], insertion_order[t2]);
+                    task_order::deferred_swap swap = insertion_order.make_swap(t1, t2);
+                    if (swap.allowed() and not insertion_order_tested(swap)) {
+                        swap.commit();
                         local_schedule.schedule_jobs(insertion_order);
                         swap.time = local_schedule.longest_timeline();
                         local_schedule.clear();
@@ -48,7 +40,7 @@ namespace js {
                             best_swaps.push_back(swap);
                         }
                         tested_orders.insert(insertion_order);
-                        std::swap(insertion_order[t1], insertion_order[t2]);
+                        swap.revert();
                         reset_job_times();
                     }
                 }
@@ -63,7 +55,7 @@ namespace js {
             solution.time = local_schedule.longest_timeline();
         }
 
-        void replace_if_better(const std::optional<task_order::swap>& best_swap) {
+        void replace_if_better(const std::optional<task_order::deferred_swap>& best_swap) {
             std::swap(insertion_order[best_swap.value().t1], insertion_order[best_swap.value().t2]);
             tested_orders.insert(insertion_order);
             schedule local_schedule(data);
@@ -85,7 +77,7 @@ namespace js {
 
         bool advance() {
 
-            const std::optional<task_order::swap> best_swap = find_best_swap();
+            const std::optional<task_order::deferred_swap> best_swap = find_best_swap();
             if (best_swap.has_value()) replace_if_better(best_swap);
             else return false;
 

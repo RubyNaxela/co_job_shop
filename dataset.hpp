@@ -37,13 +37,39 @@ namespace js {
             return hash;
         }
 
-        struct swap {
+        class deferred_swap {
 
-            size_t t1, t2;
+            task_order& tasks;
+            friend struct task_order;
+
+            deferred_swap(task_order& tasks, size_t t1, size_t t2) : tasks(tasks), t1(t1), t2(t2) {
+                if (t1 > t2) std::swap(t1, t2);
+            }
+
+        public:
+
+            const size_t t1, t2;
             time32_t time = std::numeric_limits<time32_t>::max();
 
-            swap(size_t t1, size_t t2) : t1(t1), t2(t2) {}
+            void commit() const {
+                std::swap(tasks[t1], tasks[t2]);
+            }
+
+            void revert() const {
+                commit();
+            }
+
+            [[nodiscard]] bool allowed() const {
+                const js::task_coordinates c1 = tasks[t1], c2 = tasks[t2];
+                if (c1.job_id == c2.job_id) return false;
+                return std::none_of(tasks.begin() + ptrdiff_t(t1) + 1, tasks.begin() + ptrdiff_t(t2),
+                                    [&](js::task_coordinates t) { return t.job_id == c1.job_id or t.job_id == c2.job_id; });
+            }
         };
+
+        deferred_swap make_swap(size_t t1, size_t t2) {
+            return {*this, t1, t2};
+        }
     };
 
     struct task {
