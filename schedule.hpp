@@ -43,8 +43,8 @@ namespace js {
         typedef std::list<interval>::iterator pointer;
 
         [[nodiscard]] pointer interval_at(time32_t time) {
-            return std::find_if(intervals.begin(), intervals.end(),
-                                [=](const interval& i) { return i.includes(time); });
+            return --std::find_if(intervals.rbegin(), intervals.rend(),
+                                  [=](const interval& i) { return i.includes(time); }).base();
         }
 
         [[nodiscard]] time32_t length() const {

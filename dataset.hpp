@@ -83,9 +83,7 @@ namespace js {
         }
 
         [[nodiscard]] task& get_task(task_coordinates coordinates) const {
-            return const_cast<task&>(std::find_if(jobs.begin(), jobs.end(), [&](const job& job) {
-                return job.id == coordinates.job_id;
-            })->sequence[coordinates.task_id]);
+            return const_cast<task&>(jobs[coordinates.job_id].sequence[coordinates.task_id]);
         }
     };
 }
