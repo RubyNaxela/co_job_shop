@@ -99,10 +99,10 @@ namespace js {
     protected:
 
         std::vector<timeline> table;
-        size_t jobs_count = 0;
+        size_t machine_count = 0, jobs_count = 0;
 
         explicit basic_schedule(size_t machine_count, size_t jobs_count)
-                : table(std::vector<timeline>(machine_count)), jobs_count(jobs_count) {
+                : table(std::vector<timeline>(machine_count)), machine_count(machine_count), jobs_count(jobs_count) {
             for (auto& timeline : table) timeline.add(interval::empty());
         }
 
@@ -128,6 +128,10 @@ namespace js {
 
         [[nodiscard]] time32_t longest_timeline() const {
             return std::max_element(table.begin(), table.end())->length();
+        }
+
+        void clear() {
+            *this = basic_schedule(machine_count, jobs_count);
         }
 
         [[nodiscard]] std::string gantt_chart() {

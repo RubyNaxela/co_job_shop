@@ -13,6 +13,7 @@ namespace js {
         dataset data;
         solution& solution;
         task_order insertion_order;
+        size_t tasks_count;
         zr::avl_tree_set<hash_t> tested_orders;
 
         bool swappable(size_t r1, size_t r2) {
@@ -32,22 +33,23 @@ namespace js {
 
         std::optional<task_order::swap> find_best_swap() {
             std::vector<task_order::swap> best_swaps;
-            for (size_t t1 = 0; t1 < insertion_order.size() - 1; t1++) {
-                for (size_t t2 = t1 + 1; t2 < insertion_order.size(); t2++) {
+            schedule local_schedule(data);
+            for (size_t t1 = 0; t1 < tasks_count - 1; t1++) {
+                for (size_t t2 = t1 + 1; t2 < tasks_count; t2++) {
                     if (swappable(t1, t2) and not insertion_order_tested(t1, t2)) {
                         task_order::swap swap(t1, t2);
                         std::swap(insertion_order[t1], insertion_order[t2]);
-                        schedule local_schedule(data);
                         local_schedule.schedule_jobs(insertion_order);
                         swap.time = local_schedule.longest_timeline();
-                        if (best_swaps.empty() or swap.time < best_swaps[0].time) {
+                        local_schedule.clear();
+                        if (best_swaps.empty() or swap.time == best_swaps[0].time) best_swaps.push_back(swap);
+                        else if (swap.time < best_swaps[0].time) {
                             best_swaps.clear();
                             best_swaps.push_back(swap);
-                        } else if (best_swaps[0].time == swap.time)
-                            best_swaps.push_back(swap);
+                        }
                         tested_orders.insert(insertion_order);
                         std::swap(insertion_order[t1], insertion_order[t2]);
-                        for (job& job : data.jobs) job.last_scheduled_time = 0;
+                        reset_job_times();
                     }
                 }
             }
@@ -77,7 +79,7 @@ namespace js {
 
         explicit local_search_environment(js::solution& solution)
                 : data(solution.data_source, solution.jobs_limit), solution(solution),
-                  insertion_order(solution.insertion_order) {
+                  insertion_order(solution.insertion_order), tasks_count(solution.insertion_order.size()) {
             tested_orders.insert(insertion_order);
         }
 
