@@ -2,7 +2,7 @@
 
 /.idea
 /.vscode
-/cmake-build-debug/
+/cmake-build-debug*/
 /doc/draft/
 /doc/v2-pl/
 /packages/
