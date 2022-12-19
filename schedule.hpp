@@ -150,17 +150,17 @@ namespace js {
             chart << "   " + std::string(left_col_width, ' ');
             char* id_string = new char[3];
             for (time32_t i = 0; i < longest; i++) {
-                sprintf(id_string, fmt2, i);
+                std::snprintf(id_string, 3, fmt2, i);
                 chart << id_string << " ";
             }
             chart << std::endl;
 
             for (id32_t machine_id = 0; machine_id < (id32_t) table.size(); machine_id++) {
-                sprintf(id_string, fmt1, machine_id);
+                std::snprintf(id_string, 3, fmt1, machine_id);
                 chart << id_string << ": ";
                 chart << '|';
                 for (id32_t job_id : table[machine_id].quantized(longest)) {
-                    sprintf(id_string, fmt3, job_id);
+                    std::snprintf(id_string, 3, fmt3, job_id);
                     if (job_id == -1) chart << empty;
                     else chart << colored(id_string, job_id) << '|';
                 }
