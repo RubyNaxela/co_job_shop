@@ -1,6 +1,7 @@
 #ifndef JOB_SHOP_DATASET
 #define JOB_SHOP_DATASET
 
+#include <limits>
 #include <sstream>
 #include <vector>
 
