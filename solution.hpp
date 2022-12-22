@@ -22,8 +22,8 @@ namespace js {
         solution(const std::string& data_source, uint16_t jobs_limit)
                 : data_source(data_source), jobs_limit(jobs_limit) {}
 
-        std::string&& gantt_chart() {
-            return std::move(schedule.gantt_chart());
+        std::string gantt_chart() {
+            return schedule.gantt_chart();
         }
     };
 }
