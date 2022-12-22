@@ -11,9 +11,6 @@
 
 int main(int argc, char** argv) {
 
-    zr::timer<zr::precision::ms> master_timer;
-    master_timer.start();
-
     std::string data_path = "data.txt";
     bool display_gantt_chart = false, measure_time = false;
     std::string output_path;
@@ -29,19 +26,22 @@ int main(int argc, char** argv) {
         if (std::string(argv[i]) == "-r") iterations = std::stol(argv[++i]);
     }
 
+    zr::stopwatch<zr::precision::us> master_timer(time_constraint * 1000000);
+    master_timer.start();
+
     std::ifstream data_file(data_path);
     if (not data_file.is_open()) throw std::runtime_error("Could not open file " + data_path);
     std::ostringstream buffer;
     buffer << data_file.rdbuf();
     std::string data_string = buffer.str();
 
-    zr::timer<zr::precision::ms> algorithm_timer;
+    zr::timer<zr::precision::us> algorithm_timer;
     if (measure_time) algorithm_timer.start();
 
     for (uint32_t it = 0; it < iterations; it++) {
 
         js::solution solution = js::find_initial_solution(data_string, limit, display_gantt_chart);
-        js::local_search(solution, master_timer, time_constraint * 1000);
+        js::local_search(solution, master_timer);
 
         if (measure_time) {
             algorithm_timer.stop();

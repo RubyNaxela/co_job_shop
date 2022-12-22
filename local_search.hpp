@@ -1,12 +1,47 @@
 #ifndef JOB_SHOP_LOCAL_SEARCH
 #define JOB_SHOP_LOCAL_SEARCH
 
+#pragma clang diagnostic push
+#pragma ide diagnostic ignored "google-explicit-constructor"
+
 #include "avl_tree_set.hpp"
 #include "dataset.hpp"
 #include "schedule.hpp"
 #include "timer.hpp"
 
 namespace js {
+
+    class iteration_result {
+
+        std::optional<task_order::deferred_swap> swap;
+        bool eot;
+
+        iteration_result() : swap(std::nullopt), eot(false) {}
+
+        iteration_result(task_order::deferred_swap swap, bool time_over) : swap(swap), eot(time_over) {}
+
+    public:
+
+        static iteration_result found(const task_order::deferred_swap& swap, bool time_over = false) {
+            return {swap, time_over};
+        }
+
+        static iteration_result not_found() {
+            return {};
+        }
+
+        [[nodiscard]] bool success() const {
+            return swap.has_value();
+        }
+
+        [[nodiscard]] bool time_over() const {
+            return eot;
+        }
+
+        [[nodiscard]] task_order::deferred_swap get() const {
+            return *swap;
+        }
+    };
 
     class local_search_environment {
 
@@ -15,6 +50,7 @@ namespace js {
         task_order insertion_order;
         size_t tasks_count;
         zr::avl_tree_set<hash_t> tested_orders;
+        const zr::stopwatch<zr::precision::us>& master_timer;
 
         bool insertion_order_tested(task_order::deferred_swap swap) {
             swap.commit();
@@ -23,11 +59,15 @@ namespace js {
             return tested;
         }
 
-        std::optional<task_order::deferred_swap> find_best_swap() {
+        iteration_result find_best_swap() {
             std::vector<task_order::deferred_swap> best_swaps;
             schedule local_schedule(data);
             for (size_t t1 = 0; t1 < tasks_count - 1; t1++) {
                 for (size_t t2 = t1 + 1; t2 < tasks_count; t2++) {
+                    if (master_timer.is_over()) {
+                        return not best_swaps.empty() ? iteration_result::found(best_swaps[best_swaps.size() / 2], true)
+                                                      : iteration_result::not_found();
+                    }
                     task_order::deferred_swap swap = insertion_order.make_swap(t1, t2);
                     if (swap.allowed() and not insertion_order_tested(swap)) {
                         swap.commit();
@@ -45,7 +85,8 @@ namespace js {
                     }
                 }
             }
-            return not best_swaps.empty() ? std::make_optional(best_swaps[best_swaps.size() / 2]) : std::nullopt;
+            return not best_swaps.empty() ? iteration_result::found(best_swaps[best_swaps.size() / 2])
+                                          : iteration_result::not_found();
         }
 
         void accept_solution(const schedule& local_schedule) {
@@ -69,17 +110,19 @@ namespace js {
 
     public:
 
-        explicit local_search_environment(js::solution& solution)
+        explicit local_search_environment(js::solution& solution, const zr::stopwatch<zr::precision::us>& master_timer)
                 : data(solution.data_source, solution.jobs_limit), solution(solution),
-                  insertion_order(solution.insertion_order), tasks_count(solution.insertion_order.size()) {
+                  insertion_order(solution.insertion_order), tasks_count(solution.insertion_order.size()),
+                  master_timer(master_timer) {
             tested_orders.insert(insertion_order);
         }
 
         bool advance() {
 
-            const std::optional<task_order::deferred_swap> best_swap = find_best_swap();
-            if (best_swap.has_value()) replace_if_better(best_swap);
+            const iteration_result result = find_best_swap();
+            if (result.success()) replace_if_better(result.get());
             else return false;
+            if (result.time_over()) return false;
 
             reset_job_times();
             schedule schedule(data);
@@ -88,19 +131,12 @@ namespace js {
         }
     };
 
-    void local_search(solution& solution, zr::timer<zr::precision::ms>& master_timer, uint64_t time_limit) {
-
-        local_search_environment environment(solution);
-        const uint64_t start_time = master_timer.get_measured_time();
-        size_t iterations = 0;
-        const auto average_iteration_time = [&]() { return (master_timer.get_measured_time() - start_time) / iterations; };
-
-        do {
-            const bool search_further = environment.advance();
-            if (not search_further) break;
-            iterations++;
-        } while (master_timer.get_measured_time() < time_limit - average_iteration_time());
+    void local_search(solution& solution, const zr::stopwatch<zr::precision::us>& master_timer) {
+        local_search_environment environment(solution, master_timer);
+        while (environment.advance());
     }
 }
+
+#pragma clang diagnostic pop
 
 #endif //JOB_SHOP_LOCAL_SEARCH

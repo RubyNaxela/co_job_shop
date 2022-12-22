@@ -12,18 +12,17 @@ namespace zr {
     class timer {
 
         std::chrono::time_point<std::chrono::high_resolution_clock, Dur> start_point, end_point;
-        bool running = false;
+        bool running;
+
+        [[nodiscard]] inline std::chrono::time_point<std::chrono::high_resolution_clock, Dur> now() const {
+            return std::chrono::high_resolution_clock::now();
+        }
 
     public:
 
         timer() {
-            start_point = std::chrono::high_resolution_clock::now();
-            end_point = std::chrono::high_resolution_clock::now();
+            start_point = end_point = now();
             running = false;
-        }
-
-        std::chrono::time_point<std::chrono::high_resolution_clock, Dur> now() const {
-            return std::chrono::high_resolution_clock::now();
         }
 
         void start() {
@@ -40,19 +39,31 @@ namespace zr {
             } else throw std::runtime_error("Illegal timer state: timer is not running");
         }
 
-        uint64_t get_measured_time() {
-            end_point = now();
-            Dur time = std::chrono::duration_cast<Dur>(end_point - start_point);
-            return time.count();
+        [[nodiscard]] inline uint64_t get_measured_time() const {
+            return std::chrono::duration_cast<Dur>((running ? now() : end_point) - start_point).count();
         }
 
-        std::string unit() {
+        [[nodiscard]] std::string unit() const {
             constexpr intmax_t denominator = Dur::period::den;
             if (denominator == 1) return "s";
             else if (denominator == 1000) return "ms";
             else if (denominator == 1000000) return "us";
             else if (denominator == 1000000000) return "ns";
             return "?";
+        }
+    };
+
+    template<typename Dur> requires std::chrono::__is_duration<Dur>::value
+    class stopwatch : public timer<Dur> {
+
+        typename Dur::rep time;
+
+    public:
+
+        explicit stopwatch(typename Dur::rep time) : time(time) {}
+
+        [[nodiscard]] bool is_over() const {
+            return timer<Dur>::get_measured_time() >= time;
         }
     };
 
